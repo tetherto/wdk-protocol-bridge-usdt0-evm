@@ -33,7 +33,7 @@
     "@ton/core": "0.61.0",
     "bare-node-runtime": "^1.1.4",
     "ethers": "6.13.5",
-    "tronweb": "6.0.3"
+    "tronweb": "6.2.0"
   },
   "devDependencies": {
     "cross-env": "10.0.0",
@@ -45,7 +45,8 @@
     "axios": "1.12.2",
     "cookie": "1.0.2",
     "tmp": "0.2.5",
-    "ws": "8.18.3"
+    "ws": "8.18.3",
+    "elliptic": "6.6.1"
   },
   "exports": {
     ".": {
