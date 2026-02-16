@@ -16,8 +16,10 @@
 
 /** @typedef {import('@tetherto/wdk-wallet/protocols').BridgeProtocolConfig} BridgeProtocolConfig */
 
-/** @typedef {import('@tetherto/wdk-wallet/protocols').BridgeOptions} BridgeOptions */
-
 /** @typedef {import('@tetherto/wdk-wallet/protocols').BridgeResult} BridgeResult */
+
+/** @typedef {import('./src/usdt0-protocol-evm.js').EvmBridgeOptions} EvmBridgeOptions */
+
+/** @typedef {import('./src/usdt0-protocol-evm.js').EvmBridgeConfig} EvmBridgeConfig */
 
 export { default } from './src/usdt0-protocol-evm.js'
