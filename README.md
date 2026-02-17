@@ -14,12 +14,13 @@ For detailed documentation about the complete WDK ecosystem, visit [docs.wallet.
 
 ## 🌟 Features
 
-- **Cross-Chain Bridge**: Move USDT0 tokens between supported EVM-compatible blockchains
+- **Cross-Chain Bridge**: Move USDT0 and XAUt0 tokens between supported blockchains
 - **LayerZero Integration**: Uses LayerZero protocol for secure cross-chain transfers
-- **Multi-Chain Support**: Bridge between Ethereum, Arbitrum, Polygon, and other supported chains
+- **Multi-Chain Support**: Bridge across 25+ networks including Ethereum, Arbitrum, Optimism, Polygon, Berachain, Monad, and more
+- **Non-EVM Destinations**: Bridge to Solana, TON, and TRON from any supported EVM source chain
 - **Account Abstraction**: Works with both standard EVM wallets and ERC-4337 smart accounts
 - **Fee Management**: Built-in fee calculation and bridge cost estimation
-- **Token Support**: Supports USDT and other USDT0 ecosystem tokens
+- **Token Support**: Supports USDT0 and XAUt0 (Tether Gold) across supported networks
 - **TypeScript Support**: Full TypeScript definitions included
 - **Memory Safety**: Secure transaction handling with proper error management
 - **Provider Flexibility**: Works with JSON-RPC URLs and EIP-1193 browser providers
@@ -224,12 +225,72 @@ for (const token of tokens) {
 }
 ```
 
+### Bridging to Non-EVM Chains
+
+```javascript
+// Bridge USDT0 from Ethereum to Solana
+const solanaResult = await bridgeProtocol.bridge({
+  targetChain: 'solana',
+  recipient: 'HyXJcgYpURfDhgzuyRL7zxP4FhLg7LZQMeDrR4MXZcMN', // Solana base58 address
+  token: 'USDT_TOKEN_ADDRESS',
+  amount: 1000000n
+})
+
+// Bridge USDT0 from Ethereum to TON
+const tonResult = await bridgeProtocol.bridge({
+  targetChain: 'ton',
+  recipient: 'EQAd31gAUhdO0d0NZsNb_cGl_Maa9PSuNhVLE9z8bBSjX6Gq', // TON address
+  token: 'USDT_TOKEN_ADDRESS',
+  amount: 1000000n
+})
+
+// Bridge USDT0 from Ethereum to TRON
+const tronResult = await bridgeProtocol.bridge({
+  targetChain: 'tron',
+  recipient: 'TFG4wBaDQ8sHWWP1ACeSGnoNR6RRzevLPt', // TRON address
+  token: 'USDT_TOKEN_ADDRESS',
+  amount: 1000000n
+})
+```
+
+### Custom Contract Address and Destination EID Overrides
+
+```javascript
+// Use a custom OFT contract address (bypasses auto-resolution)
+const result = await bridgeProtocol.bridge({
+  targetChain: 'arbitrum',
+  recipient: 'RECIPIENT_ADDRESS',
+  token: 'USDT_TOKEN_ADDRESS',
+  amount: 1000000n,
+  oftContractAddress: '0xYourCustomOftContractAddress'
+})
+
+// Override the destination endpoint ID
+const result2 = await bridgeProtocol.bridge({
+  targetChain: 'arbitrum',
+  recipient: 'RECIPIENT_ADDRESS',
+  token: 'USDT_TOKEN_ADDRESS',
+  amount: 1000000n,
+  dstEid: 30110 // Custom LayerZero endpoint ID
+})
+
+// Both overrides work with quoteBridge too
+const quote = await bridgeProtocol.quoteBridge({
+  targetChain: 'arbitrum',
+  recipient: 'RECIPIENT_ADDRESS',
+  token: 'USDT_TOKEN_ADDRESS',
+  amount: 1000000n,
+  oftContractAddress: '0xYourCustomOftContractAddress',
+  dstEid: 30110
+})
+```
+
 ### Advanced Bridge Operations
 
 ```javascript
 // Compare bridge costs across different target chains
 const sourceChain = 'ethereum'
-const targetChains = ['arbitrum', 'polygon']
+const targetChains = ['arbitrum', 'optimism', 'polygon']
 const amount = 1000000n
 const token = 'USDT_TOKEN_ADDRESS'
 const recipient = 'RECIPIENT_ADDRESS'
@@ -292,20 +353,22 @@ const bridgeProtocol = new Usdt0ProtocolEvm(account, {
 
 | Method | Description | Returns |
 |--------|-------------|---------|
-| `bridge(options, config?)` | Bridges tokens between EVM chains | `Promise<{hash: string, fee: bigint, bridgeFee: bigint}>` |
-| `quoteBridge(options, config?)` | Gets the cost of a bridge operation | `Promise<{fee: bigint, bridgeFee: bigint}>` |
+| `bridge(options, config?)` | Bridges tokens between EVM chains | `Promise<BridgeResult>` |
+| `quoteBridge(options, config?)` | Gets the cost of a bridge operation | `Promise<Omit<BridgeResult, 'hash'>>` |
 
 ##### `bridge(options, config?)`
-Bridges tokens between EVM-compatible blockchains using the USDT0 protocol.
+Bridges tokens between blockchains using the USDT0 protocol.
 
 **Parameters:**
-- `options` (object): Bridge operation options
-  - `targetChain` (string): Where to send tokens ('ethereum', 'arbitrum', 'polygon')
-  - `recipient` (string): Address that will get the bridged tokens
+- `options` (`BridgeOptions`): Bridge operation options
+  - `targetChain` (string): Where to send tokens (e.g. `'ethereum'`, `'arbitrum'`, `'polygon'`, `'solana'`, `'ton'`, `'tron'`, etc.)
+  - `recipient` (string): Address that will get the bridged tokens (EVM hex address, Solana base58, TON, or TRON address)
   - `token` (string): Token address on source chain
   - `amount` (bigint): Amount to bridge in token base units
-- `config` (object, optional): Override settings for ERC-4337 accounts
-  - `paymasterToken` (string, optional): Token to use for paying gas fees
+  - `oftContractAddress` (string, optional): Custom OFT contract address to use instead of auto-resolving from the source chain
+  - `dstEid` (number, optional): Custom LayerZero destination endpoint ID to override the default for the target chain
+- `config` (`Pick<EvmErc4337WalletConfig, 'paymasterToken'> & Pick<BridgeProtocolConfig, 'bridgeMaxFee'>`, optional): Override settings for ERC-4337 accounts
+  - `paymasterToken` ({ address: string }, optional): Paymaster token configuration
   - `bridgeMaxFee` (bigint, optional): Override maximum bridge fee
 
 **Returns:** `Promise<BridgeResult>` - Bridge operation result
@@ -324,10 +387,10 @@ const result = await bridgeProtocol.bridge({
 Gets the cost of a bridge operation without executing it.
 
 **Parameters:**
-- `options` (object): Same as bridge method
-- `config` (object, optional): Override settings for ERC-4337 accounts
+- `options` (`BridgeOptions`): Same as bridge method (including optional `oftContractAddress` and `dstEid` overrides)
+- `config` (`Pick<EvmErc4337WalletConfig, 'paymasterToken'>`, optional): Override settings for ERC-4337 accounts
 
-**Returns:** `Promise<BridgeQuote>` - Bridge cost estimate
+**Returns:** `Promise<Omit<BridgeResult, 'hash'>>` - Bridge cost estimate
 
 **Example:**
 ```javascript
@@ -341,18 +404,63 @@ const quote = await bridgeProtocol.quoteBridge({
 
 ## 🌐 Supported Networks
 
-This package works with EVM-compatible blockchains:
+This package supports bridging from EVM source chains to both EVM and non-EVM destination chains.
 
-**Supported Chains:**
-- **Ethereum** (Chain ID: 1, Mainnet)
-- **Arbitrum** (Chain ID: 42161, ERC-4337 support)
-- **Polygon** (Chain ID: 137)
-- **Other EVM L2 Networks** (Various Layer 2 solutions)
+**EVM Source/Destination Chains (USDT0):**
 
-**Token Support:**
-- USDT and other USDT0 ecosystem tokens
-- XAUT (Tether Gold) on supported networks
-- Tokens with deployed OFT contracts
+| Chain | Chain ID | EID |
+|-------|----------|-----|
+| Ethereum | 1 | 30101 |
+| Arbitrum | 42161 | 30110 |
+| Berachain | 80094 | 30362 |
+| Conflux eSpace | 1030 | 30212 |
+| Corn | 21000000 | 30331 |
+| Flare | 14 | 30295 |
+| HyperEVM | 999 | 30367 |
+| Ink | 57073 | 30339 |
+| Mantle | 5000 | 30181 |
+| MegaETH | 4326 | 30398 |
+| Monad | 143 | 30390 |
+| Morph | 2818 | 30322 |
+| Optimism | 10 | 30111 |
+| Plasma | 9745 | 30383 |
+| Polygon | 137 | 30109 |
+| Rootstock | 30 | 30333 |
+| Sei | 1329 | 30280 |
+| Stable | 988 | 30396 |
+| Unichain | 130 | 30320 |
+| XLayer | 196 | 30274 |
+
+**Legacy Mesh Chains (USDT0):**
+
+| Chain | EID |
+|-------|-----|
+| Ethereum | 30101 |
+| Arbitrum | 30110 |
+| Celo | 30125 |
+| Solana | 30168 |
+| TON | 30343 |
+| TRON | 30420 |
+
+**Non-EVM Destination Chains:**
+- **Solana** (EID: 30168) - base58 address format
+- **TON** (EID: 30343) - TON address format
+- **TRON** (EID: 30420) - TRON address format
+
+**XAUt0 (Tether Gold) Support:**
+
+| Chain | EID |
+|-------|-----|
+| Ethereum | 30101 |
+| Arbitrum | 30110 |
+| Avalanche | 30106 |
+| Celo | 30125 |
+| HyperEVM | 30367 |
+| Ink | 30339 |
+| Monad | 30390 |
+| Plasma | 30383 |
+| Polygon | 30109 |
+| Stable | 30396 |
 
 **Account Types:**
 - **Standard EVM Wallets**: `@tetherto/wdk-wallet-evm` accounts
