@@ -33,7 +33,7 @@ import { OFT_ABI, TRANSACTION_VALUE_HELPER_ABI } from './abi.js'
 /** @typedef {import('@tetherto/wdk-wallet-evm-erc-4337').EvmErc4337WalletConfig} EvmErc4337WalletConfig */
 
 /**
- * @typedef {object} EvmBridgeOptions
+ * @typedef {object} BridgeOptions
  * @property {string} targetChain - The identifier of the destination blockchain (e.g., "arbitrum").
  * @property {string} recipient - The address of the recipient.
  * @property {string} token - The address of the token to bridge.
@@ -218,7 +218,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
    *
    * Users must first approve the necessary amount of tokens to the usdt0 protocol using the {@link WalletAccountEvm#approve} or the {@link WalletAccountEvmErc4337#approve} method.
    *
-   * @param {EvmBridgeOptions} options - The bridge's options. Optionally pass
+   * @param {BridgeOptions} options - The bridge's options. Optionally pass
    *   'oftContractAddress' to use a custom OFT contract address instead of the auto-resolved one, and/or 'dstEid' to override
    *   the destination endpoint id.
    * @param {Pick<EvmErc4337WalletConfig, 'paymasterToken'> & Pick<BridgeProtocolConfig, 'bridgeMaxFee'>} [config] - If the protocol has
@@ -267,7 +267,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
    *
    * Users must first approve the necessary amount of tokens to the usdt0 protocol using the {@link WalletAccountEvm#approve} or the {@link WalletAccountEvmErc4337#approve} method.
    *
-   * @param {EvmBridgeOptions} options - The bridge's options. Optionally pass
+   * @param {BridgeOptions} options - The bridge's options. Optionally pass
    *   'oftContractAddress' to use a custom OFT contract address instead of the auto-resolved one, and/or 'dstEid' to override
    *   the destination endpoint id.
    * @param {Pick<EvmErc4337WalletConfig, 'paymasterToken'>} [config] - If the protocol has been initialized with an erc-4337
