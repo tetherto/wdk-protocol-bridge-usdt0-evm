@@ -10,6 +10,10 @@ import { WalletAccountEvm, WalletAccountReadOnlyEvm } from '@tetherto/wdk-wallet
 
 import { WalletAccountEvmErc4337, WalletAccountReadOnlyEvmErc4337 } from '@tetherto/wdk-wallet-evm-erc-4337'
 
+import { Address } from '@ton/core'
+
+import { TronWeb } from 'tronweb'
+
 import { OFT_ABI, TRANSACTION_VALUE_HELPER_ABI } from '../src/abi.js'
 
 const SEED = 'cook voyage document eight skate token alien guide drink uncle term abuse'
@@ -306,6 +310,146 @@ describe('Usdt0ProtocolEvm', () => {
           fee: 12_345n,
           bridgeFee: 10_000n
         })
+      })
+    })
+
+    describe('bridge to ton', () => {
+      const TON_ADDRESS = 'EQAd31gAUhdO0d0NZsNb_cGl_Maa9PSuNhVLE9z8bBSjX6Gq'
+
+      const TON_SEND_PARAM = {
+        dstEid: 30_343,
+        to: '0x' + Address.parse(TON_ADDRESS).toRawString().slice(2),
+        amountLD: 100n,
+        minAmountLD: 99n,
+        extraOptions: new Uint8Array([0, 3]),
+        composeMsg: new Uint8Array([ ]),
+        oftCmd: new Uint8Array([ ])
+      }
+
+      const TON_BRIDGE_TRANSACTION = {
+        to: '0x1F748c76dE468e9D11bd340fA9D5CBADf315dFB0',
+        value: 10_000n,
+        data: '0xc7c7f5b3000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000027100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a460aebce0d3a4becad8ccf9d6d4861296c503bd00000000000000000000000000000000000000000000000000000000000076871ddf580052174ed1dd0d66c35bfdc1a5fcc69af4f4ae36154b13dcfc6c14a35f0000000000000000000000000000000000000000000000000000000000000064000000000000000000000000000000000000000000000000000000000000006300000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000012000000000000000000000000000000000000000000000000000000000000001400000000000000000000000000000000000000000000000000000000000000002000300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
+      }
+
+      beforeEach(() => {
+        tokenMock.mockResolvedValue(TOKEN)
+
+        quoteSendMock.mockResolvedValue({ nativeFee: 10_000n })
+
+        account.quoteSendTransaction = jest.fn()
+          .mockResolvedValueOnce({ fee: 12_345n })
+
+        account.sendTransaction = jest.fn()
+          .mockResolvedValueOnce({ hash: 'dummy-ton-bridge-hash', fee: 12_345n })
+      })
+
+      test('should successfully bridge to ton with ton address encoding', async () => {
+        const result = await protocol.bridge({
+          targetChain: 'ton',
+          recipient: TON_ADDRESS,
+          token: TOKEN,
+          amount: 100
+        })
+
+        expect(tokenMock).toHaveBeenCalled()
+
+        expect(quoteSendMock).toHaveBeenCalledWith(TON_SEND_PARAM, false)
+
+        expect(account.quoteSendTransaction).toHaveBeenCalledWith(TON_BRIDGE_TRANSACTION)
+
+        expect(account.sendTransaction).toHaveBeenCalledWith(TON_BRIDGE_TRANSACTION)
+
+        expect(result).toEqual({
+          hash: 'dummy-ton-bridge-hash',
+          fee: 12_345n,
+          bridgeFee: 10_000n
+        })
+      })
+
+      test('should skip oftContract and use legacyMeshContract for ton target', async () => {
+        await protocol.bridge({
+          targetChain: 'ton',
+          recipient: TON_ADDRESS,
+          token: TOKEN,
+          amount: 100
+        })
+
+        expect(account.sendTransaction).toHaveBeenCalledWith(
+          expect.objectContaining({
+            to: '0x1F748c76dE468e9D11bd340fA9D5CBADf315dFB0'
+          })
+        )
+      })
+    })
+
+    describe('bridge to tron', () => {
+      const TRON_ADDRESS = 'TFG4wBaDQ8sHWWP1ACeSGnoNR6RRzevLPt'
+
+      const TRON_SEND_PARAM = {
+        dstEid: 30_420,
+        to: addressToBytes32('0x' + TronWeb.address.toHex(TRON_ADDRESS)),
+        amountLD: 100n,
+        minAmountLD: 99n,
+        extraOptions: new Uint8Array([0, 3]),
+        composeMsg: new Uint8Array([ ]),
+        oftCmd: new Uint8Array([ ])
+      }
+
+      const TRON_BRIDGE_TRANSACTION = {
+        to: '0x1F748c76dE468e9D11bd340fA9D5CBADf315dFB0',
+        value: 10_000n,
+        data: '0xc7c7f5b3000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000027100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a460aebce0d3a4becad8ccf9d6d4861296c503bd00000000000000000000000000000000000000000000000000000000000076d40000000000000000000000413a08f76772e200653bb55c2a92998daca62e0e970000000000000000000000000000000000000000000000000000000000000064000000000000000000000000000000000000000000000000000000000000006300000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000012000000000000000000000000000000000000000000000000000000000000001400000000000000000000000000000000000000000000000000000000000000002000300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
+      }
+
+      beforeEach(() => {
+        tokenMock.mockResolvedValue(TOKEN)
+
+        quoteSendMock.mockResolvedValue({ nativeFee: 10_000n })
+
+        account.quoteSendTransaction = jest.fn()
+          .mockResolvedValueOnce({ fee: 12_345n })
+
+        account.sendTransaction = jest.fn()
+          .mockResolvedValueOnce({ hash: 'dummy-tron-bridge-hash', fee: 12_345n })
+      })
+
+      test('should successfully bridge to tron with tron address encoding', async () => {
+        const result = await protocol.bridge({
+          targetChain: 'tron',
+          recipient: TRON_ADDRESS,
+          token: TOKEN,
+          amount: 100
+        })
+
+        expect(tokenMock).toHaveBeenCalled()
+
+        expect(quoteSendMock).toHaveBeenCalledWith(TRON_SEND_PARAM, false)
+
+        expect(account.quoteSendTransaction).toHaveBeenCalledWith(TRON_BRIDGE_TRANSACTION)
+
+        expect(account.sendTransaction).toHaveBeenCalledWith(TRON_BRIDGE_TRANSACTION)
+
+        expect(result).toEqual({
+          hash: 'dummy-tron-bridge-hash',
+          fee: 12_345n,
+          bridgeFee: 10_000n
+        })
+      })
+
+      test('should skip oftContract and use legacyMeshContract for tron target', async () => {
+        await protocol.bridge({
+          targetChain: 'tron',
+          recipient: TRON_ADDRESS,
+          token: TOKEN,
+          amount: 100
+        })
+
+        expect(account.sendTransaction).toHaveBeenCalledWith(
+          expect.objectContaining({
+            to: '0x1F748c76dE468e9D11bd340fA9D5CBADf315dFB0'
+          })
+        )
       })
     })
   })
