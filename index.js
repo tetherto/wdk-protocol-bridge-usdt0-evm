@@ -20,6 +20,4 @@
 
 /** @typedef {import('./src/usdt0-protocol-evm.js').EvmBridgeOptions} EvmBridgeOptions */
 
-/** @typedef {import('./src/usdt0-protocol-evm.js').EvmBridgeConfig} EvmBridgeConfig */
-
 export { default } from './src/usdt0-protocol-evm.js'
