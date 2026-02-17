@@ -98,7 +98,7 @@ const BLOCKCHAINS = {
     chainId: 5_000
   },
   megaeth: {
-    oftContract: '0x9151434b16b9763660705744891fa906f660ecc5',
+    oftContract: '0x9151434b16b9763660705744891fA906F660EcC5',
     eid: 30_398,
     chainId: 4_326
   },
@@ -152,7 +152,7 @@ const BLOCKCHAINS = {
     chainId: 130
   },
   xlayer: {
-    oftContract: '0x94bcca6bdfd6a61817ab0e960bfede4984505554',
+    oftContract: '0x94BCCa6bdfd6A61817Ab0E960bFedE4984505554',
     eid: 30_274,
     chainId: 196
   },
@@ -163,7 +163,7 @@ const BLOCKCHAINS = {
   },
   celo: {
     legacyMeshContract: '0xf10E161027410128E63E75D0200Fb6d34b2db243',
-    xautOftContract: '0x21caef8a43163eea865baee23b9c2e327696a3bf',
+    xautOftContract: '0x21cAef8A43163Eea865baeE23b9C2E327696A3bf',
     eid: 30_125,
     chainId: 42_220
   },
