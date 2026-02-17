@@ -4,6 +4,8 @@ import { addressToBytes32 } from '@layerzerolabs/lz-v2-utilities'
 
 import * as ethers from 'ethers'
 
+const { decodeBase58, zeroPadValue, toBeHex } = ethers
+
 import { WalletAccountEvm, WalletAccountReadOnlyEvm } from '@tetherto/wdk-wallet-evm'
 
 import { WalletAccountEvmErc4337, WalletAccountReadOnlyEvmErc4337 } from '@tetherto/wdk-wallet-evm-erc-4337'
@@ -185,6 +187,125 @@ describe('Usdt0ProtocolEvm', () => {
 
         await expect(protocol.quoteBridge({ }))
           .rejects.toThrow('The wallet must be connected to a provider in order to quote bridge operations.')
+      })
+    })
+
+    describe('bridge to solana', () => {
+      const SOLANA_ADDRESS = 'HyXJcgYpURfDhgzuyRL7zxP4FhLg7LZQMeDrR4MXZcMN'
+
+      const SOLANA_SEND_PARAM = {
+        dstEid: 30_168,
+        to: zeroPadValue(toBeHex(decodeBase58(SOLANA_ADDRESS)), 32),
+        amountLD: 100n,
+        minAmountLD: 99n,
+        extraOptions: new Uint8Array([0, 3]),
+        composeMsg: new Uint8Array([ ]),
+        oftCmd: new Uint8Array([ ])
+      }
+
+      const SOLANA_BRIDGE_TRANSACTION = {
+        to: '0x1F748c76dE468e9D11bd340fA9D5CBADf315dFB0',
+        value: 10_000n,
+        data: '0xc7c7f5b3000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000027100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a460aebce0d3a4becad8ccf9d6d4861296c503bd00000000000000000000000000000000000000000000000000000000000075d8fc35c7d850a775913767c2f2e08e606f11635473ee9100dda1c4e81aa35d89a90000000000000000000000000000000000000000000000000000000000000064000000000000000000000000000000000000000000000000000000000000006300000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000012000000000000000000000000000000000000000000000000000000000000001400000000000000000000000000000000000000000000000000000000000000002000300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
+      }
+
+      beforeEach(() => {
+        tokenMock.mockResolvedValue(TOKEN)
+
+        quoteSendMock.mockResolvedValue({ nativeFee: 10_000n })
+
+        account.quoteSendTransaction = jest.fn()
+          .mockResolvedValueOnce({ fee: 12_345n })
+
+        account.sendTransaction = jest.fn()
+          .mockResolvedValueOnce({ hash: 'dummy-solana-bridge-hash', fee: 12_345n })
+      })
+
+      test('should successfully bridge to solana with base58 address encoding', async () => {
+        const result = await protocol.bridge({
+          targetChain: 'solana',
+          recipient: SOLANA_ADDRESS,
+          token: TOKEN,
+          amount: 100
+        })
+
+        expect(tokenMock).toHaveBeenCalled()
+
+        expect(quoteSendMock).toHaveBeenCalledWith(SOLANA_SEND_PARAM, false)
+
+        expect(account.quoteSendTransaction).toHaveBeenCalledWith(SOLANA_BRIDGE_TRANSACTION)
+
+        expect(account.sendTransaction).toHaveBeenCalledWith(SOLANA_BRIDGE_TRANSACTION)
+
+        expect(result).toEqual({
+          hash: 'dummy-solana-bridge-hash',
+          fee: 12_345n,
+          bridgeFee: 10_000n
+        })
+      })
+
+      test('should skip oftContract and use legacyMeshContract for solana target', async () => {
+        await protocol.bridge({
+          targetChain: 'solana',
+          recipient: SOLANA_ADDRESS,
+          token: TOKEN,
+          amount: 100
+        })
+
+        expect(account.sendTransaction).toHaveBeenCalledWith(
+          expect.objectContaining({
+            to: '0x1F748c76dE468e9D11bd340fA9D5CBADf315dFB0'
+          })
+        )
+      })
+    })
+
+    describe('quoteBridge to solana', () => {
+      const SOLANA_ADDRESS = 'HyXJcgYpURfDhgzuyRL7zxP4FhLg7LZQMeDrR4MXZcMN'
+
+      const SOLANA_SEND_PARAM = {
+        dstEid: 30_168,
+        to: zeroPadValue(toBeHex(decodeBase58(SOLANA_ADDRESS)), 32),
+        amountLD: 100n,
+        minAmountLD: 99n,
+        extraOptions: new Uint8Array([0, 3]),
+        composeMsg: new Uint8Array([ ]),
+        oftCmd: new Uint8Array([ ])
+      }
+
+      const SOLANA_BRIDGE_TRANSACTION = {
+        to: '0x1F748c76dE468e9D11bd340fA9D5CBADf315dFB0',
+        value: 10_000n,
+        data: '0xc7c7f5b3000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000027100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a460aebce0d3a4becad8ccf9d6d4861296c503bd00000000000000000000000000000000000000000000000000000000000075d8fc35c7d850a775913767c2f2e08e606f11635473ee9100dda1c4e81aa35d89a90000000000000000000000000000000000000000000000000000000000000064000000000000000000000000000000000000000000000000000000000000006300000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000012000000000000000000000000000000000000000000000000000000000000001400000000000000000000000000000000000000000000000000000000000000002000300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
+      }
+
+      beforeEach(() => {
+        tokenMock.mockResolvedValue(TOKEN)
+
+        quoteSendMock.mockResolvedValue({ nativeFee: 10_000n })
+
+        account.quoteSendTransaction = jest.fn()
+          .mockResolvedValueOnce({ fee: 12_345n })
+      })
+
+      test('should successfully quote a bridge to solana', async () => {
+        const result = await protocol.quoteBridge({
+          targetChain: 'solana',
+          recipient: SOLANA_ADDRESS,
+          token: TOKEN,
+          amount: 100
+        })
+
+        expect(tokenMock).toHaveBeenCalled()
+
+        expect(quoteSendMock).toHaveBeenCalledWith(SOLANA_SEND_PARAM, false)
+
+        expect(account.quoteSendTransaction).toHaveBeenCalledWith(SOLANA_BRIDGE_TRANSACTION)
+
+        expect(result).toEqual({
+          fee: 12_345n,
+          bridgeFee: 10_000n
+        })
       })
     })
   })
