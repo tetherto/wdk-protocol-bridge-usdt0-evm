@@ -360,7 +360,7 @@ const bridgeProtocol = new Usdt0ProtocolEvm(account, {
 Bridges tokens between blockchains using the USDT0 protocol.
 
 **Parameters:**
-- `options` (`EvmBridgeOptions`): Bridge operation options
+- `options` (`BridgeOptions`): Bridge operation options
   - `targetChain` (string): Where to send tokens (e.g. `'ethereum'`, `'arbitrum'`, `'polygon'`, `'solana'`, `'ton'`, `'tron'`, etc.)
   - `recipient` (string): Address that will get the bridged tokens (EVM hex address, Solana base58, TON, or TRON address)
   - `token` (string): Token address on source chain
@@ -387,7 +387,7 @@ const result = await bridgeProtocol.bridge({
 Gets the cost of a bridge operation without executing it.
 
 **Parameters:**
-- `options` (`EvmBridgeOptions`): Same as bridge method (including optional `oftContractAddress` and `dstEid` overrides)
+- `options` (`BridgeOptions`): Same as bridge method (including optional `oftContractAddress` and `dstEid` overrides)
 - `config` (`Pick<EvmErc4337WalletConfig, 'paymasterToken'>`, optional): Override settings for ERC-4337 accounts
 
 **Returns:** `Promise<Omit<BridgeResult, 'hash'>>` - Bridge cost estimate
