@@ -42,12 +42,6 @@ import { OFT_ABI, TRANSACTION_VALUE_HELPER_ABI } from './abi.js'
  * @property {number} [dstEid] - Custom LayerZero destination endpoint ID to override the default for the target chain.
  */
 
-/**
- * @typedef {object} EvmBridgeConfig
- * @property {{ address: string }} [paymasterToken] - The paymaster token configuration.
- * @property {number | bigint} [bridgeMaxFee] - The maximum fee amount for bridge operations.
- */
-
 const FEE_TOLERANCE = 999n
 
 const BLOCKCHAINS = {
@@ -227,8 +221,9 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
    * @param {EvmBridgeOptions} options - The bridge's options. Optionally pass
    *   'oftContractAddress' to use a custom OFT contract address instead of the auto-resolved one, and/or 'dstEid' to override
    *   the destination endpoint id.
-   * @param {EvmBridgeConfig} [config] - If the protocol has been initialized with an erc-4337 wallet account, overrides the
-   *   'paymasterToken' option defined in its configuration and the 'bridgeMaxFee' option defined in the protocol configuration.
+   * @param {Pick<EvmErc4337WalletConfig, 'paymasterToken'> & Pick<BridgeProtocolConfig, 'bridgeMaxFee'>} [config] - If the protocol has
+   *   been initialized with an erc-4337 wallet account, overrides the 'paymasterToken' option defined in its configuration and the
+   *   'bridgeMaxFee' option defined in the protocol configuration.
    * @returns {Promise<BridgeResult>} The bridge's result.
    */
   async bridge (options, config) {
@@ -275,7 +270,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
    * @param {EvmBridgeOptions} options - The bridge's options. Optionally pass
    *   'oftContractAddress' to use a custom OFT contract address instead of the auto-resolved one, and/or 'dstEid' to override
    *   the destination endpoint id.
-   * @param {Omit<EvmBridgeConfig, 'bridgeMaxFee'>} [config] - If the protocol has been initialized with an erc-4337
+   * @param {Pick<EvmErc4337WalletConfig, 'paymasterToken'>} [config] - If the protocol has been initialized with an erc-4337
    *   wallet account, overrides the 'paymasterToken' option defined in its configuration.
    * @returns {Promise<Omit<BridgeResult, 'hash'>>} The bridge's quotes.
    */

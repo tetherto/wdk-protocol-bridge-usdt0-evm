@@ -367,7 +367,7 @@ Bridges tokens between blockchains using the USDT0 protocol.
   - `amount` (bigint): Amount to bridge in token base units
   - `oftContractAddress` (string, optional): Custom OFT contract address to use instead of auto-resolving from the source chain
   - `dstEid` (number, optional): Custom LayerZero destination endpoint ID to override the default for the target chain
-- `config` (`EvmBridgeConfig`, optional): Override settings for ERC-4337 accounts
+- `config` (`Pick<EvmErc4337WalletConfig, 'paymasterToken'> & Pick<BridgeProtocolConfig, 'bridgeMaxFee'>`, optional): Override settings for ERC-4337 accounts
   - `paymasterToken` ({ address: string }, optional): Paymaster token configuration
   - `bridgeMaxFee` (bigint, optional): Override maximum bridge fee
 
@@ -388,7 +388,7 @@ Gets the cost of a bridge operation without executing it.
 
 **Parameters:**
 - `options` (`EvmBridgeOptions`): Same as bridge method (including optional `oftContractAddress` and `dstEid` overrides)
-- `config` (`Omit<EvmBridgeConfig, 'bridgeMaxFee'>`, optional): Override settings for ERC-4337 accounts
+- `config` (`Pick<EvmErc4337WalletConfig, 'paymasterToken'>`, optional): Override settings for ERC-4337 accounts
 
 **Returns:** `Promise<Omit<BridgeResult, 'hash'>>` - Bridge cost estimate
 
