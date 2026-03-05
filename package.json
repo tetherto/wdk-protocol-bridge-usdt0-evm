@@ -1,6 +1,6 @@
 {
   "name": "@tetherto/wdk-protocol-bridge-usdt0-evm",
-  "version": "1.0.0-beta.4",
+  "version": "1.0.0-beta.3",
   "description": "A simple package that lets @tetherto/wdk-wallet-evm and wallet-evm-erc-4337 wallet accounts interact with the usdt0 protocol.",
   "keywords": [
     "wdk",
