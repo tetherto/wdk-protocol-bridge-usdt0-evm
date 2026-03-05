@@ -82,11 +82,10 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
    *
    * Users must first approve the necessary amount of tokens to the usdt0 protocol using the {@link WalletAccountEvm#approve} or the {@link WalletAccountEvmErc4337#approve} method.
    *
-   * @param {BridgeOptions} options - The bridge's options. Optionally pass
-   *   'oftContractAddress' to use a custom OFT contract address instead of the auto-resolved one, and/or 'dstEid' to override
-   *   the destination endpoint id.
-   * @param {Partial<EvmErc4337WalletPaymasterTokenConfig | EvmErc4337WalletSponsorshipPolicyConfig | EvmErc4337WalletNativeCoinsConfig> & Pick<BridgeProtocolConfig, 'bridgeMaxFee'>} [config] - Allows
-   *   to override the 'bridgeMaxFee' option. If the protocol has been initialized with an erc-4337 wallet account, it also allows to override its configuration options.
+   * @param {BridgeOptions} options - The bridge's options. Optionally pass 'oftContractAddress' to use a custom OFT contract address instead of the auto-resolved one, and/or 'dstEid' to
+   *   override the destination endpoint id.
+   * @param {Partial<EvmErc4337WalletPaymasterTokenConfig | EvmErc4337WalletSponsorshipPolicyConfig | EvmErc4337WalletNativeCoinsConfig> & Pick<BridgeProtocolConfig, 'bridgeMaxFee'>} [config] - If
+   *   the protocol has been initialized with an erc-4337 wallet account, it can be used to override its configuration options along with the 'bridgeMaxFee' option.
    * @returns {Promise<BridgeResult>} The bridge's result.
    */
   async bridge (options, config) {
@@ -98,11 +97,11 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
       throw new Error('The wallet must be connected to a provider in order to perform bridge operations.')
     }
 
-    const { bridgeMaxFee } = { ...this._config, ...config }
-
     const { oftTx, bridgeFee } = await this._getBridgeTransactions({ ...options, amount: BigInt(options.amount) })
 
     if (this._account instanceof WalletAccountEvmErc4337) {
+      const { bridgeMaxFee } = { ...this._config, ...config }
+
       const { fee } = await this._account.quoteSendTransaction([oftTx], config)
 
       if (bridgeMaxFee !== undefined && fee + bridgeFee >= bridgeMaxFee) {
@@ -116,7 +115,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
 
     const { fee } = await this._account.quoteSendTransaction(oftTx)
 
-    if (bridgeMaxFee !== undefined && fee + bridgeFee >= bridgeMaxFee) {
+    if (this._config.bridgeMaxFee !== undefined && fee + bridgeFee >= this._config.bridgeMaxFee) {
       throw new Error('Exceeded maximum fee cost for bridge operation.')
     }
 
@@ -130,11 +129,10 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
    *
    * Users must first approve the necessary amount of tokens to the usdt0 protocol using the {@link WalletAccountEvm#approve} or the {@link WalletAccountEvmErc4337#approve} method.
    *
-   * @param {BridgeOptions} options - The bridge's options. Optionally pass
-   *   'oftContractAddress' to use a custom OFT contract address instead of the auto-resolved one, and/or 'dstEid' to override
-   *   the destination endpoint id.
+   * @param {BridgeOptions} options - The bridge's options. Optionally pass 'oftContractAddress' to use a custom OFT contract address instead of the auto-resolved one, and/or 'dstEid' to
+   *   override the destination endpoint id.
    * @param {Partial<EvmErc4337WalletPaymasterTokenConfig | EvmErc4337WalletSponsorshipPolicyConfig | EvmErc4337WalletNativeCoinsConfig>} [config] - If the protocol has been initialized with
-   *   an erc-4337 wallet account, allows to override its configuration options.
+   *   an erc-4337 wallet account, it can be used to override its configuration options.
    * @returns {Promise<Omit<BridgeResult, 'hash'>>} The bridge's quotes.
    */
   async quoteBridge (options, config) {
