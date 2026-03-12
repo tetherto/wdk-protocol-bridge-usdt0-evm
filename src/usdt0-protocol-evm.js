@@ -31,7 +31,9 @@ import { FEE_TOLERANCE, BLOCKCHAINS } from './config.js'
 
 /** @typedef {import('@tetherto/wdk-wallet-evm').WalletAccountReadOnlyEvm} WalletAccountReadOnlyEvm */
 
-/** @typedef {import('@tetherto/wdk-wallet-evm-erc-4337').EvmErc4337WalletConfig} EvmErc4337WalletConfig */
+/** @typedef {import('@tetherto/wdk-wallet-evm-erc-4337').EvmErc4337WalletPaymasterTokenConfig} EvmErc4337WalletPaymasterTokenConfig */
+/** @typedef {import('@tetherto/wdk-wallet-evm-erc-4337').EvmErc4337WalletSponsorshipPolicyConfig} EvmErc4337WalletSponsorshipPolicyConfig */
+/** @typedef {import('@tetherto/wdk-wallet-evm-erc-4337').EvmErc4337WalletNativeCoinsConfig} EvmErc4337WalletNativeCoinsConfig */
 
 /**
  * @typedef {object} BridgeOptions
@@ -80,12 +82,10 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
    *
    * Users must first approve the necessary amount of tokens to the usdt0 protocol using the {@link WalletAccountEvm#approve} or the {@link WalletAccountEvmErc4337#approve} method.
    *
-   * @param {BridgeOptions} options - The bridge's options. Optionally pass
-   *   'oftContractAddress' to use a custom OFT contract address instead of the auto-resolved one, and/or 'dstEid' to override
-   *   the destination endpoint id.
-   * @param {Pick<EvmErc4337WalletConfig, 'paymasterToken'> & Pick<BridgeProtocolConfig, 'bridgeMaxFee'>} [config] - If the protocol has
-   *   been initialized with an erc-4337 wallet account, overrides the 'paymasterToken' option defined in its configuration and the
-   *   'bridgeMaxFee' option defined in the protocol configuration.
+   * @param {BridgeOptions} options - The bridge's options. Optionally pass 'oftContractAddress' to use a custom OFT contract address instead of the auto-resolved one, and/or 'dstEid' to
+   *   override the destination endpoint id.
+   * @param {Partial<EvmErc4337WalletPaymasterTokenConfig | EvmErc4337WalletSponsorshipPolicyConfig | EvmErc4337WalletNativeCoinsConfig> & Pick<BridgeProtocolConfig, 'bridgeMaxFee'>} [config] - If
+   *   the protocol has been initialized with an erc-4337 wallet account, it can be used to override its configuration options along with the 'bridgeMaxFee' option.
    * @returns {Promise<BridgeResult>} The bridge's result.
    */
   async bridge (options, config) {
@@ -100,7 +100,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
     const { oftTx, bridgeFee } = await this._getBridgeTransactions({ ...options, amount: BigInt(options.amount) })
 
     if (this._account instanceof WalletAccountEvmErc4337) {
-      const { bridgeMaxFee } = config ?? this._config
+      const { bridgeMaxFee } = { ...this._config, ...config }
 
       const { fee } = await this._account.quoteSendTransaction([oftTx], config)
 
@@ -129,11 +129,10 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
    *
    * Users must first approve the necessary amount of tokens to the usdt0 protocol using the {@link WalletAccountEvm#approve} or the {@link WalletAccountEvmErc4337#approve} method.
    *
-   * @param {BridgeOptions} options - The bridge's options. Optionally pass
-   *   'oftContractAddress' to use a custom OFT contract address instead of the auto-resolved one, and/or 'dstEid' to override
-   *   the destination endpoint id.
-   * @param {Pick<EvmErc4337WalletConfig, 'paymasterToken'>} [config] - If the protocol has been initialized with an erc-4337
-   *   wallet account, overrides the 'paymasterToken' option defined in its configuration.
+   * @param {BridgeOptions} options - The bridge's options. Optionally pass 'oftContractAddress' to use a custom OFT contract address instead of the auto-resolved one, and/or 'dstEid' to
+   *   override the destination endpoint id.
+   * @param {Partial<EvmErc4337WalletPaymasterTokenConfig | EvmErc4337WalletSponsorshipPolicyConfig | EvmErc4337WalletNativeCoinsConfig>} [config] - If the protocol has been initialized with
+   *   an erc-4337 wallet account, it can be used to override its configuration options.
    * @returns {Promise<Omit<BridgeResult, 'hash'>>} The bridge's quotes.
    */
   async quoteBridge (options, config) {
