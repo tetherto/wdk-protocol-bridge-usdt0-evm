@@ -19,62 +19,31 @@ import { WalletAccountEvm } from '@tetherto/wdk-wallet-evm'
 import { WalletAccountEvmErc4337, WalletAccountReadOnlyEvmErc4337 } from '@tetherto/wdk-wallet-evm-erc-4337'
 
 import { addressToBytes32, Options } from '@layerzerolabs/lz-v2-utilities'
-import { JsonRpcProvider, BrowserProvider, Contract, getBytes } from 'ethers'
+import { JsonRpcProvider, BrowserProvider, Contract, getBytes, decodeBase58, zeroPadValue, toBeHex } from 'ethers'
 import { Address } from '@ton/core'
 import { TronWeb } from 'tronweb'
 
 import { OFT_ABI, TRANSACTION_VALUE_HELPER_ABI } from './abi.js'
+import { FEE_TOLERANCE, BLOCKCHAINS } from './config.js'
 
 /** @typedef {import('@tetherto/wdk-wallet/protocols').BridgeProtocolConfig} BridgeProtocolConfig */
-/** @typedef {import('@tetherto/wdk-wallet/protocols').BridgeOptions} BridgeOptions */
 /** @typedef {import('@tetherto/wdk-wallet/protocols').BridgeResult} BridgeResult */
 
 /** @typedef {import('@tetherto/wdk-wallet-evm').WalletAccountReadOnlyEvm} WalletAccountReadOnlyEvm */
 
-/** @typedef {import('@tetherto/wdk-wallet-evm-erc-4337').EvmErc4337WalletConfig} EvmErc4337WalletConfig */
+/** @typedef {import('@tetherto/wdk-wallet-evm-erc-4337').EvmErc4337WalletPaymasterTokenConfig} EvmErc4337WalletPaymasterTokenConfig */
+/** @typedef {import('@tetherto/wdk-wallet-evm-erc-4337').EvmErc4337WalletSponsorshipPolicyConfig} EvmErc4337WalletSponsorshipPolicyConfig */
+/** @typedef {import('@tetherto/wdk-wallet-evm-erc-4337').EvmErc4337WalletNativeCoinsConfig} EvmErc4337WalletNativeCoinsConfig */
 
-const FEE_TOLERANCE = 999n
-
-const BLOCKCHAINS = {
-  ethereum: {
-    oftContract: '0x6C96dE32CEa08842dcc4058c14d3aaAD7Fa41dee',
-    legacyMeshContract: '0x811ed79dB9D34E83BDB73DF6c3e07961Cfb0D5c0',
-    xautOftContract: '0xb9c2321BB7D0Db468f570D10A424d1Cc8EFd696C',
-    eid: 30_101,
-    chainId: 1
-  },
-  arbitrum: {
-    oftContract: '0x14E4A1B13bf7F943c8ff7C51fb60FA964A298D92',
-    legacyMeshContract: '0x238A52455a1EF6C987CaC94b28B4081aFE50ba06',
-    xautOftContract: '0xf40542a7B66AD7C68C459EE3679635D2fDB6dF39',
-    transactionValueHelper: '0xa90f03c856D01F698E7071B393387cd75a8a319A',
-    eid: 30_110,
-    chainId: 42_161
-  },
-  polygon: {
-    xautOftContract: '0x5421Cf4288d8007D3c43AC4246eaFCe5b049e352',
-    eid: 30_109,
-    chainId: 137
-  },
-  berachain: {
-    oftContract: '0x779Ded0c9e1022225f8E0630b35a9b54bE713736',
-    eid: 30_362,
-    chainId: 80_094
-  },
-  ink: {
-    oftContract: '0x0200C29006150606B650577BBE7B6248F58470c1',
-    eid: 30_339,
-    chainId: 57_073
-  },
-  ton: {
-    eid: 30_343,
-    chainId: 30_343
-  },
-  tron: {
-    eid: 30_420,
-    chainId: 728_126_428
-  }
-}
+/**
+ * @typedef {object} BridgeOptions
+ * @property {string} targetChain - The identifier of the destination blockchain (e.g., "arbitrum").
+ * @property {string} recipient - The address of the recipient.
+ * @property {string} token - The address of the token to bridge.
+ * @property {number | bigint} amount - The amount of tokens to bridge to the destination chain (in base unit).
+ * @property {string} [oftContractAddress] - Custom OFT contract address to use instead of auto-resolving from the source chain.
+ * @property {number} [dstEid] - Custom LayerZero destination endpoint ID to override the default for the target chain.
+ */
 
 export default class Usdt0ProtocolEvm extends BridgeProtocol {
   /**
@@ -113,10 +82,10 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
    *
    * Users must first approve the necessary amount of tokens to the usdt0 protocol using the {@link WalletAccountEvm#approve} or the {@link WalletAccountEvmErc4337#approve} method.
    *
-   * @param {BridgeOptions} options - The bridge's options.
-   * @param {Pick<EvmErc4337WalletConfig, 'paymasterToken'> & Pick<BridgeProtocolConfig, 'bridgeMaxFee'>} [config] - If the protocol has
-   *   been initialized with an erc-4337 wallet account, overrides the 'paymasterToken' option defined in its configuration and the
-   *   'bridgeMaxFee' option defined in the protocol configuration.
+   * @param {BridgeOptions} options - The bridge's options. Optionally pass 'oftContractAddress' to use a custom OFT contract address instead of the auto-resolved one, and/or 'dstEid' to
+   *   override the destination endpoint id.
+   * @param {Partial<EvmErc4337WalletPaymasterTokenConfig | EvmErc4337WalletSponsorshipPolicyConfig | EvmErc4337WalletNativeCoinsConfig> & Pick<BridgeProtocolConfig, 'bridgeMaxFee'>} [config] - If
+   *   the protocol has been initialized with an erc-4337 wallet account, it can be used to override its configuration options along with the 'bridgeMaxFee' option.
    * @returns {Promise<BridgeResult>} The bridge's result.
    */
   async bridge (options, config) {
@@ -131,7 +100,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
     const { oftTx, bridgeFee } = await this._getBridgeTransactions({ ...options, amount: BigInt(options.amount) })
 
     if (this._account instanceof WalletAccountEvmErc4337) {
-      const { bridgeMaxFee } = config ?? this._config
+      const { bridgeMaxFee } = { ...this._config, ...config }
 
       const { fee } = await this._account.quoteSendTransaction([oftTx], config)
 
@@ -160,9 +129,10 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
    *
    * Users must first approve the necessary amount of tokens to the usdt0 protocol using the {@link WalletAccountEvm#approve} or the {@link WalletAccountEvmErc4337#approve} method.
    *
-   * @param {BridgeOptions} options - The bridge's options.
-   * @param {Pick<EvmErc4337WalletConfig, 'paymasterToken'>} [config] - If the protocol has been initialized with an erc-4337
-   *   wallet account, overrides the 'paymasterToken' option defined in its configuration.
+   * @param {BridgeOptions} options - The bridge's options. Optionally pass 'oftContractAddress' to use a custom OFT contract address instead of the auto-resolved one, and/or 'dstEid' to
+   *   override the destination endpoint id.
+   * @param {Partial<EvmErc4337WalletPaymasterTokenConfig | EvmErc4337WalletSponsorshipPolicyConfig | EvmErc4337WalletNativeCoinsConfig>} [config] - If the protocol has been initialized with
+   *   an erc-4337 wallet account, it can be used to override its configuration options.
    * @returns {Promise<Omit<BridgeResult, 'hash'>>} The bridge's quotes.
    */
   async quoteBridge (options, config) {
@@ -195,16 +165,22 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
   }
 
   /** @private */
-  async _getBridgeTransactions ({ targetChain, recipient, token, amount }) {
+  async _getBridgeTransactions ({ targetChain, recipient, token, amount, oftContractAddress, dstEid }) {
     const address = await this._account.getAddress()
 
-    const oftContract = await this._getOftContract(targetChain, token)
+    let oftContract
+
+    if (oftContractAddress) {
+      oftContract = new Contract(oftContractAddress, OFT_ABI, this._provider)
+    } else {
+      oftContract = await this._getOftContract(targetChain, token)
+    }
 
     if (!oftContract) {
       throw new Error(`Token '${token}' not supported on this chain.`)
     }
 
-    const sendParam = this._buildOftSendParam(targetChain, recipient, amount)
+    const sendParam = this._buildOftSendParam(targetChain, recipient, amount, dstEid)
 
     if (this._account instanceof WalletAccountEvmErc4337) {
       const transactionValueHelper = await this._getTransactionValueHelperContract()
@@ -254,7 +230,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
     }
 
     for (const key of ['oftContract', 'legacyMeshContract', 'xautOftContract']) {
-      if (key === 'oftContract' && ['ton', 'tron'].includes(targetChain)) {
+      if (key === 'oftContract' && ['solana', 'ton', 'tron'].includes(targetChain)) {
         continue
       }
 
@@ -286,7 +262,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
   }
 
   /** @private */
-  _buildOftSendParam (targetChain, recipient, amount) {
+  _buildOftSendParam (targetChain, recipient, amount, dstEidOverride) {
     const options = Options.newOptions()
 
     let to
@@ -295,12 +271,14 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
       to = '0x' + Address.parse(recipient).toRawString().slice(2)
     } else if (targetChain === 'tron') {
       to = addressToBytes32('0x' + TronWeb.address.toHex(recipient))
+    } else if (targetChain === 'solana') {
+      to = zeroPadValue(toBeHex(decodeBase58(recipient)), 32)
     } else {
       to = addressToBytes32(recipient)
     }
 
     return {
-      dstEid: BLOCKCHAINS[targetChain].eid,
+      dstEid: dstEidOverride ?? BLOCKCHAINS[targetChain].eid,
       to,
       amountLD: amount,
       minAmountLD: amount * FEE_TOLERANCE / 1_000n,

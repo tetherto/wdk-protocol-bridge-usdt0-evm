@@ -21,27 +21,28 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
     private _provider;
     /**
      * Bridges a token to a different blockchain.
-     * 
+     *
      * Users must first approve the necessary amount of tokens to the usdt0 protocol using the {@link WalletAccountEvm#approve} or the {@link WalletAccountEvmErc4337#approve} method.
      *
-     * @param {BridgeOptions} options - The bridge's options.
-     * @param {Pick<EvmErc4337WalletConfig, 'paymasterToken'> & Pick<BridgeProtocolConfig, 'bridgeMaxFee'>} [config] - If the protocol has
-     *   been initialized with an erc-4337 wallet account, overrides the 'paymasterToken' option defined in its configuration and the
-     *   'bridgeMaxFee' option defined in the protocol configuration.
+     * @param {BridgeOptions} options - The bridge's options. Optionally pass 'oftContractAddress' to use a custom OFT contract address instead of the auto-resolved one, and/or 'dstEid' to
+     *   override the destination endpoint id.
+     * @param {Partial<EvmErc4337WalletPaymasterTokenConfig | EvmErc4337WalletSponsorshipPolicyConfig | EvmErc4337WalletNativeCoinsConfig> & Pick<BridgeProtocolConfig, 'bridgeMaxFee'>} [config] - If
+     *   the protocol has been initialized with an erc-4337 wallet account, it can be used to override its configuration options along with the 'bridgeMaxFee' option.
      * @returns {Promise<BridgeResult>} The bridge's result.
      */
-    bridge(options: BridgeOptions, config?: Pick<EvmErc4337WalletConfig, "paymasterToken"> & Pick<BridgeProtocolConfig, "bridgeMaxFee">): Promise<BridgeResult>;
+    bridge(options: BridgeOptions, config?: Partial<EvmErc4337WalletPaymasterTokenConfig | EvmErc4337WalletSponsorshipPolicyConfig | EvmErc4337WalletNativeCoinsConfig> & Pick<BridgeProtocolConfig, "bridgeMaxFee">): Promise<BridgeResult>;
     /**
      * Quotes the costs of a bridge operation.
-     * 
+     *
      * Users must first approve the necessary amount of tokens to the usdt0 protocol using the {@link WalletAccountEvm#approve} or the {@link WalletAccountEvmErc4337#approve} method.
      *
-     * @param {BridgeOptions} options - The bridge's options.
-     * @param {Pick<EvmErc4337WalletConfig, 'paymasterToken'>} [config] - If the protocol has been initialized with an erc-4337
-     *   wallet account, overrides the 'paymasterToken' option defined in its configuration.
+     * @param {BridgeOptions} options - The bridge's options. Optionally pass 'oftContractAddress' to use a custom OFT contract address instead of the auto-resolved one, and/or 'dstEid' to
+     *   override the destination endpoint id.
+     * @param {Partial<EvmErc4337WalletPaymasterTokenConfig | EvmErc4337WalletSponsorshipPolicyConfig | EvmErc4337WalletNativeCoinsConfig>} [config] - If the protocol has been initialized with
+     *   an erc-4337 wallet account, it can be used to override its configuration options.
      * @returns {Promise<Omit<BridgeResult, 'hash'>>} The bridge's quotes.
      */
-    quoteBridge(options: BridgeOptions, config?: Pick<EvmErc4337WalletConfig, "paymasterToken">): Promise<Omit<BridgeResult, "hash">>;
+    quoteBridge(options: BridgeOptions, config?: Partial<EvmErc4337WalletPaymasterTokenConfig | EvmErc4337WalletSponsorshipPolicyConfig | EvmErc4337WalletNativeCoinsConfig>): Promise<Omit<BridgeResult, "hash">>;
     /** @private */
     private _getChainId;
     /** @private */
@@ -56,35 +57,36 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
     private _getTransactionValueHelperContract;
 }
 export type BridgeProtocolConfig = import("@tetherto/wdk-wallet/protocols").BridgeProtocolConfig;
-export type BridgeOptions = import("@tetherto/wdk-wallet/protocols").BridgeOptions;
+export type BridgeResult = import("@tetherto/wdk-wallet/protocols").BridgeResult;
 export type WalletAccountReadOnlyEvm = import("@tetherto/wdk-wallet-evm").WalletAccountReadOnlyEvm;
-export type EvmErc4337WalletConfig = import("@tetherto/wdk-wallet-evm-erc-4337").EvmErc4337WalletConfig;
-export type BridgeResult = {
+export type EvmErc4337WalletPaymasterTokenConfig = import("@tetherto/wdk-wallet-evm-erc-4337").EvmErc4337WalletPaymasterTokenConfig;
+export type EvmErc4337WalletSponsorshipPolicyConfig = import("@tetherto/wdk-wallet-evm-erc-4337").EvmErc4337WalletSponsorshipPolicyConfig;
+export type EvmErc4337WalletNativeCoinsConfig = import("@tetherto/wdk-wallet-evm-erc-4337").EvmErc4337WalletNativeCoinsConfig;
+export type BridgeOptions = {
     /**
-     * - The hash of the swap operation.
+     * - The identifier of the destination blockchain (e.g., "arbitrum").
      */
-    hash: string;
+    targetChain: string;
     /**
-     * - The gas cost.
+     * - The address of the recipient.
      */
-    fee: bigint;
+    recipient: string;
     /**
-     * - The amount of native tokens paid to the bridge protocol.
+     * - The address of the token to bridge.
      */
-    bridgeFee: bigint;
+    token: string;
     /**
-     * - If the protocol has been initialized with a standard wallet account, this field will contain the hash
-     * of the approve call to allow usdt0 to transfer the bridged tokens. If the protocol has been initialized with an erc-4337 wallet account,
-     * this field will be undefined (since the approve call will be bundled in the user operation with hash {@link BridgeResult#hash}).
+     * - The amount of tokens to bridge to the destination chain (in base unit).
      */
-    approveHash?: string;
+    amount: number | bigint;
     /**
-     * - If the bridge operation has been performed on ethereum mainnet by bridging usdt tokens, this field will
-     * contain the hash of the approve call that resets the allowance of the usdt0 protocol to zero (due to the usdt allowance reset requirement).
-     * If the protocol has been initialized with an erc-4337 wallet account, this field will be undefined (since the approve call will be bundled in
-     * the user operation with hash {@link BridgeResult#hash}).
+     * - Custom OFT contract address to use instead of auto-resolving from the source chain.
      */
-    resetAllowanceHash?: string;
+    oftContractAddress?: string;
+    /**
+     * - Custom LayerZero destination endpoint ID to override the default for the target chain.
+     */
+    dstEid?: number;
 };
 import { BridgeProtocol } from '@tetherto/wdk-wallet/protocols';
 import { WalletAccountReadOnlyEvmErc4337 } from '@tetherto/wdk-wallet-evm-erc-4337';
