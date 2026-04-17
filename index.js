@@ -20,4 +20,15 @@
 
 /** @typedef {import('./src/usdt0-protocol-evm.js').BridgeOptions} BridgeOptions */
 
+/** @typedef {import('./src/lifi-protocol-evm.js').BridgeOptions} LifiBridgeOptions */
+
+/** @typedef {import('./src/lifi-protocol-evm.js').LifiBridgeProtocolConfig} LifiBridgeProtocolConfig */
+
+/** @typedef {import('./src/lifi-protocol-evm.js').LifiBridgeResult} LifiBridgeResult */
+
+// Default export preserved for backwards compatibility
 export { default } from './src/usdt0-protocol-evm.js'
+
+export { default as Usdt0ProtocolEvm } from './src/usdt0-protocol-evm.js'
+
+export { default as LifiProtocolEvm } from './src/lifi-protocol-evm.js'
