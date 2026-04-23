@@ -71,12 +71,15 @@ const MOCK_STATUS = {
 
 const getNetworkMock = jest.fn()
 
+const waitForTransactionMock = jest.fn().mockResolvedValue({})
+
 const allowanceMock = jest.fn()
 
 jest.unstable_mockModule('ethers', () => ({
   ...ethers,
   JsonRpcProvider: jest.fn().mockImplementation(() => ({
-    getNetwork: getNetworkMock
+    getNetwork: getNetworkMock,
+    waitForTransaction: waitForTransactionMock
   })),
   Contract: jest.fn().mockImplementation((target, abi, provider) => {
     const contract = new ethers.Contract(target, abi, provider)
@@ -255,17 +258,100 @@ describe('LifiProtocolEvm', () => {
         expect(account.sendTransaction).toHaveBeenCalledTimes(3)
       })
 
-      test('should throw before executing when bridgeMaxFee is exceeded', async () => {
-        const cappedProtocol = new LifiProtocolEvm(account, { bridgeMaxFee: 0n })
+      test('should throw before executing when maxGasFee is exceeded', async () => {
+        const cappedProtocol = new LifiProtocolEvm(account, { maxGasFee: 0n })
 
         await expect(cappedProtocol.bridge({
           targetChain: 'arbitrum',
           recipient: USER_ADDRESS,
           token: TOKEN,
           amount: 1_000_000n
-        })).rejects.toThrow('Exceeded maximum fee cost for bridge operation.')
+        })).rejects.toThrow('Exceeded maximum gas fee for bridge operation.')
 
         expect(account.sendTransaction).not.toHaveBeenCalled()
+      })
+
+      test('should throw before executing when maxBridgeFee is exceeded', async () => {
+        const cappedProtocol = new LifiProtocolEvm(account, { maxBridgeFee: 0n })
+
+        await expect(cappedProtocol.bridge({
+          targetChain: 'arbitrum',
+          recipient: USER_ADDRESS,
+          token: TOKEN,
+          amount: 1_000_000n
+        })).rejects.toThrow('Exceeded maximum bridge fee for bridge operation.')
+
+        expect(account.sendTransaction).not.toHaveBeenCalled()
+      })
+
+      test('should exclude APPROVE-type gas costs from the returned fee', async () => {
+        global.fetch = jest.fn().mockImplementation((url) => {
+          if (url.includes('/token')) {
+            return Promise.resolve({ ok: true, json: async () => ({ symbol: 'USDT' }) })
+          }
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              ...MOCK_QUOTE,
+              estimate: {
+                ...MOCK_QUOTE.estimate,
+                gasCosts: [
+                  { type: 'APPROVE', amount: '50000000000000', amountUSD: '0.13' },
+                  { type: 'SEND',    amount: '155728000000000', amountUSD: '0.41' }
+                ]
+              }
+            })
+          })
+        })
+
+        const result = await protocol.bridge({
+          targetChain: 'arbitrum',
+          recipient: USER_ADDRESS,
+          token: TOKEN,
+          amount: 1_000_000n
+        })
+
+        expect(result.fee).toBe(155_728_000_000_000n)
+      })
+
+      test('should pass allowBridges to the LI.FI quote endpoint', async () => {
+        const filteredProtocol = new LifiProtocolEvm(account, { allowBridges: ['stargate', 'cctp'] })
+
+        await filteredProtocol.bridge({
+          targetChain: 'arbitrum',
+          recipient: USER_ADDRESS,
+          token: TOKEN,
+          amount: 1_000_000n
+        })
+
+        const fetchCall = global.fetch.mock.calls.find(([url]) => url.includes('/quote'))[0]
+        expect(fetchCall).toContain('allowBridges=stargate%2Ccctp')
+      })
+
+      test('should pass denyBridges to the LI.FI quote endpoint', async () => {
+        const filteredProtocol = new LifiProtocolEvm(account, { denyBridges: ['across', 'mayan'] })
+
+        await filteredProtocol.bridge({
+          targetChain: 'arbitrum',
+          recipient: USER_ADDRESS,
+          token: TOKEN,
+          amount: 1_000_000n
+        })
+
+        const fetchCall = global.fetch.mock.calls.find(([url]) => url.includes('/quote'))[0]
+        expect(fetchCall).toContain('denyBridges=across%2Cmayan')
+      })
+
+      test('should wait for approval confirmation before submitting the bridge transaction', async () => {
+        const callOrder = []
+        account.sendTransaction = jest.fn()
+          .mockImplementationOnce(async () => { callOrder.push('approve'); return { hash: 'dummy-approve-hash' } })
+          .mockImplementationOnce(async () => { callOrder.push('bridge'); return { hash: 'dummy-bridge-hash' } })
+        waitForTransactionMock.mockImplementationOnce(async () => { callOrder.push('wait'); return {} })
+
+        await protocol.bridge({ targetChain: 'arbitrum', recipient: USER_ADDRESS, token: TOKEN, amount: 1_000_000n })
+
+        expect(callOrder).toEqual(['approve', 'wait', 'bridge'])
       })
 
       test('should throw for an unsupported target chain', async () => {
@@ -399,6 +485,54 @@ describe('LifiProtocolEvm', () => {
         expect(fetchCall).toContain('toChain=8453')
       })
 
+      test('should throw when the token resolution endpoint returns a non-OK response', async () => {
+        global.fetch = jest.fn().mockImplementation((url) => {
+          if (url.includes('/token')) {
+            return Promise.resolve({ ok: false, status: 404, statusText: 'Not Found' })
+          }
+          return Promise.resolve({ ok: true, json: async () => MOCK_QUOTE })
+        })
+
+        await expect(protocol.quoteBridge({
+          targetChain: 'arbitrum',
+          recipient: USER_ADDRESS,
+          token: TOKEN,
+          amount: 1_000_000n
+        })).rejects.toThrow("Failed to resolve token symbol for")
+      })
+
+      test('should throw when the token resolution endpoint returns no symbol', async () => {
+        global.fetch = jest.fn().mockImplementation((url) => {
+          if (url.includes('/token')) {
+            return Promise.resolve({ ok: true, json: async () => ({}) })
+          }
+          return Promise.resolve({ ok: true, json: async () => MOCK_QUOTE })
+        })
+
+        await expect(protocol.quoteBridge({
+          targetChain: 'arbitrum',
+          recipient: USER_ADDRESS,
+          token: TOKEN,
+          amount: 1_000_000n
+        })).rejects.toThrow("LI.FI returned no symbol for token")
+      })
+
+      test('should accept a token symbol string as toToken without calling the resolution endpoint', async () => {
+        await protocol.quoteBridge({
+          targetChain: 'optimism',
+          recipient: USER_ADDRESS,
+          token: TOKEN,
+          toToken: 'USDC',
+          amount: 1_000_000n
+        })
+
+        const tokenFetchCalls = global.fetch.mock.calls.filter(([url]) => url.includes('/token'))
+        expect(tokenFetchCalls).toHaveLength(0)
+
+        const quoteFetchCall = global.fetch.mock.calls.find(([url]) => url.includes('/quote'))[0]
+        expect(quoteFetchCall).toContain('toToken=USDC')
+      })
+
       test('should throw for an unsupported target chain', async () => {
         await expect(protocol.quoteBridge({
           targetChain: 'unsupported-chain',
@@ -517,24 +651,81 @@ describe('LifiProtocolEvm', () => {
         expect(bridgeCall[0].data).toBe(MOCK_QUOTE.transactionRequest.data)
       })
 
-      test('should throw when bridgeMaxFee is exceeded', async () => {
-        const cappedProtocol = new LifiProtocolEvm(account, { bridgeMaxFee: 0n })
+      test('should throw when maxGasFee is exceeded', async () => {
+        const cappedProtocol = new LifiProtocolEvm(account, { maxGasFee: 0n })
 
         await expect(cappedProtocol.bridge({
           targetChain: 'arbitrum',
           recipient: USER_ADDRESS,
           token: TOKEN,
           amount: 1_000_000n
-        })).rejects.toThrow('Exceeded maximum fee cost for bridge operation.')
+        })).rejects.toThrow('Exceeded maximum gas fee for bridge operation.')
       })
 
-      test('should allow bridgeMaxFee override via the config argument', async () => {
+      test('should allow maxGasFee override via the per-call config argument', async () => {
         await expect(protocol.bridge({
           targetChain: 'arbitrum',
           recipient: USER_ADDRESS,
           token: TOKEN,
           amount: 1_000_000n
-        }, { bridgeMaxFee: 0n })).rejects.toThrow('Exceeded maximum fee cost for bridge operation.')
+        }, { maxGasFee: 0n })).rejects.toThrow('Exceeded maximum gas fee for bridge operation.')
+      })
+
+      test('should skip approval when skipApproval is true', async () => {
+        global.fetch = jest.fn().mockImplementation((url) => {
+          if (url.includes('/token')) {
+            return Promise.resolve({ ok: true, json: async () => ({ symbol: 'USDT' }) })
+          }
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              ...MOCK_QUOTE,
+              estimate: { ...MOCK_QUOTE.estimate, skipApproval: true }
+            })
+          })
+        })
+
+        account.sendTransaction = jest.fn()
+          .mockResolvedValueOnce({ hash: 'dummy-bridge-hash' })
+
+        const result = await protocol.bridge({
+          targetChain: 'arbitrum',
+          recipient: USER_ADDRESS,
+          token: TOKEN,
+          amount: 1_000_000n
+        })
+
+        expect(result.hash).toBe('dummy-bridge-hash')
+        expect(result.approveHash).toBeUndefined()
+        expect(account.sendTransaction).toHaveBeenCalledTimes(1)
+        const bridgeCall = account.sendTransaction.mock.calls[0][0]
+        expect(Array.isArray(bridgeCall)).toBe(true)
+      })
+
+      test('should reset allowance to zero before approving when a non-zero allowance exists', async () => {
+        allowanceMock.mockResolvedValue(500n)
+
+        account.sendTransaction = jest.fn()
+          .mockResolvedValueOnce({ hash: 'dummy-reset-hash' })
+          .mockResolvedValueOnce({ hash: 'dummy-approve-hash' })
+          .mockResolvedValueOnce({ hash: 'dummy-bridge-hash' })
+
+        const result = await protocol.bridge({
+          targetChain: 'arbitrum',
+          recipient: USER_ADDRESS,
+          token: TOKEN,
+          amount: 1_000_000n
+        })
+
+        expect(result.resetAllowanceHash).toBe('dummy-reset-hash')
+        expect(result.approveHash).toBe('dummy-approve-hash')
+        expect(result.hash).toBe('dummy-bridge-hash')
+        expect(account.sendTransaction).toHaveBeenCalledTimes(3)
+
+        const resetCall = account.sendTransaction.mock.calls[0][0]
+        expect(Array.isArray(resetCall)).toBe(true)
+        const approveCall = account.sendTransaction.mock.calls[1][0]
+        expect(Array.isArray(approveCall)).toBe(true)
       })
 
       test('should throw if the account is read-only', async () => {

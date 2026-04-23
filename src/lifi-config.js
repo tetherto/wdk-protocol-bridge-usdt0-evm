@@ -61,7 +61,6 @@ export const CHAINS = {
   gravity: 1_625,
   hemi: 43_111,
   hyper_evm: 999,
-  hyperliquid: 1_337,
   immutable_zkevm: 13_371,
   ink: 57_073,
   kaia: 8_217,

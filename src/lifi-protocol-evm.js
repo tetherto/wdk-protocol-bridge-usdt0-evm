@@ -36,7 +36,11 @@ import { LIFI_API_URL, CHAINS } from './lifi-config.js'
 
 /**
  * @typedef {Object} LifiBridgeProtocolConfig
- * @property {number | bigint} [bridgeMaxFee] - The maximum combined fee (gas + bridge fee) allowed for a bridge operation.
+ * @property {number | bigint} [maxGasFee] - Maximum gas cost allowed for the bridge transaction, in native token wei.
+ *   If the estimated gas exceeds this value, `bridge()` throws before sending any transaction.
+ *   Gas for ERC-20 approval transactions is not included in this estimate (see `LifiBridgeResult.fee`).
+ * @property {number | bigint} [maxBridgeFee] - Maximum protocol fee allowed, in source token base units.
+ *   If the estimated bridge fee exceeds this value, `bridge()` throws before sending any transaction.
  * @property {string} [integrator] - LI.FI integrator identifier, sent as the x-lifi-integrator header.
  * @property {string} [apiKey] - LI.FI API key for higher rate limits, sent as x-lifi-api-key. Never expose client-side.
  * @property {LifiRouteOrder} [order] - Route selection strategy passed to the LI.FI quote API.
@@ -44,9 +48,11 @@ import { LIFI_API_URL, CHAINS } from './lifi-config.js'
  *   - `'FASTEST'` — prioritises shortest settlement time; useful when users should not wait hours.
  *   - `'CHEAPEST'` — minimises total fees (gas + bridge fee).
  * @property {string[]} [allowBridges] - Whitelist of bridge protocol names to route through (e.g. `['stargate', 'cctp']`).
- *   When set, LI.FI will only consider routes using these bridges. Takes precedence over `denyBridges`.
+ *   Both `allowBridges` and `denyBridges` are forwarded to LI.FI and applied independently. If a bridge
+ *   appears in both lists it will be excluded from routing.
  * @property {string[]} [denyBridges] - Blacklist of bridge protocol names to exclude (e.g. `['across']`).
- *   When set, LI.FI will not route through these bridges.
+ * @property {number} [slippage] - Maximum acceptable slippage as a decimal fraction (e.g. `0.005` for 0.5%).
+ *   Defaults to LI.FI's platform default when omitted. Increase for volatile or illiquid routes.
  */
 
 /**
@@ -66,8 +72,12 @@ import { LIFI_API_URL, CHAINS } from './lifi-config.js'
 /**
  * @typedef {Object} LifiBridgeResult
  * @property {string} hash - Transaction hash of the executed bridge operation.
- * @property {bigint} fee - Estimated gas cost in native token wei.
- * @property {bigint} bridgeFee - Protocol fee in source token base units.
+ * @property {bigint} fee - Gas cost of the bridge transaction in native token wei (SEND-type costs only).
+ *   Does NOT include gas for ERC-20 approval transactions that may have been sent first.
+ *   Add ~150 000–200 000 gas per approval tx to UI estimates when allowance is insufficient.
+ * @property {bigint} bridgeFee - Protocol fee in source token base units (not native wei).
+ *   This is denominated in the source token — e.g. 2300 means 0.0023 USDT at 6 decimals.
+ *   See `LifiBridgeProtocolConfig.maxBridgeFee` to cap it.
  * @property {string} [approveHash] - Transaction hash of the ERC-20 approval, present when an approval was required.
  * @property {string} [resetAllowanceHash] - Transaction hash of the allowance reset to zero, present when an existing
  *   non-zero allowance had to be cleared first (e.g., USDT on Ethereum).
@@ -118,9 +128,9 @@ export default class LifiProtocolEvm extends BridgeProtocol {
    * a reset-to-zero transaction is sent first.
    *
    * @param {BridgeOptions} options - The bridge options.
-   * @param {Partial<EvmErc4337WalletPaymasterTokenConfig | EvmErc4337WalletSponsorshipPolicyConfig | EvmErc4337WalletNativeCoinsConfig> & Pick<LifiBridgeProtocolConfig, 'bridgeMaxFee'>} [config] - If
+   * @param {Partial<EvmErc4337WalletPaymasterTokenConfig | EvmErc4337WalletSponsorshipPolicyConfig | EvmErc4337WalletNativeCoinsConfig> & Pick<LifiBridgeProtocolConfig, 'maxGasFee' | 'maxBridgeFee'>} [config] - If
    *   the protocol has been initialised with an ERC-4337 wallet account, this can override its configuration
-   *   options along with the 'bridgeMaxFee' option.
+   *   options along with the 'maxGasFee' and 'maxBridgeFee' options.
    * @returns {Promise<LifiBridgeResult>} The bridge result.
    */
   async bridge (options, config) {
@@ -132,7 +142,7 @@ export default class LifiProtocolEvm extends BridgeProtocol {
       throw new Error('The wallet must be connected to a provider in order to perform bridge operations.')
     }
 
-    const { bridgeMaxFee } = this._isErc4337Account()
+    const { maxGasFee, maxBridgeFee } = this._isErc4337Account()
       ? { ...this._config, ...config }
       : this._config
 
@@ -143,8 +153,11 @@ export default class LifiProtocolEvm extends BridgeProtocol {
 
     const { fee, bridgeFee } = this._extractFees(quote)
 
-    if (bridgeMaxFee !== undefined && fee + bridgeFee >= BigInt(bridgeMaxFee)) {
-      throw new Error('Exceeded maximum fee cost for bridge operation.')
+    if (maxGasFee !== undefined && fee > BigInt(maxGasFee)) {
+      throw new Error('Exceeded maximum gas fee for bridge operation.')
+    }
+    if (maxBridgeFee !== undefined && bridgeFee > BigInt(maxBridgeFee)) {
+      throw new Error('Exceeded maximum bridge fee for bridge operation.')
     }
 
     const { approveHash, resetAllowanceHash } = await this._handleApproval(
@@ -204,6 +217,7 @@ export default class LifiProtocolEvm extends BridgeProtocol {
     const { estimate, action, toolDetails, tool } = quote
 
     const gasCostUSD = (estimate.gasCosts || [])
+      .filter(gc => gc.type === 'SEND')
       .reduce((sum, gc) => sum + parseFloat(gc.amountUSD || 0), 0)
       .toFixed(4)
 
@@ -254,6 +268,8 @@ export default class LifiProtocolEvm extends BridgeProtocol {
 
   /** @private */
   async _getChainId () {
+    // Cached for the lifetime of this instance. With BrowserProvider the user could switch
+    // networks — construct a new LifiProtocolEvm when that happens.
     if (!this._chainId) {
       const network = await this._provider.getNetwork()
       this._chainId = Number(network.chainId)
@@ -292,10 +308,11 @@ export default class LifiProtocolEvm extends BridgeProtocol {
       toAddress: recipient
     })
 
-    const { order, allowBridges, denyBridges } = this._config
+    const { order, allowBridges, denyBridges, slippage } = this._config
     if (order) params.set('order', order)
     if (allowBridges?.length) params.set('allowBridges', allowBridges.join(','))
     if (denyBridges?.length) params.set('denyBridges', denyBridges.join(','))
+    if (slippage !== undefined) params.set('slippage', String(slippage))
 
     const response = await fetch(`${LIFI_API_URL}/quote?${params}`, {
       headers: this._buildHeaders()
@@ -323,18 +340,34 @@ export default class LifiProtocolEvm extends BridgeProtocol {
       headers: this._buildHeaders()
     })
 
-    if (!response.ok) return tokenAddress
+    if (!response.ok) {
+      throw new Error(
+        `Failed to resolve token symbol for ${tokenAddress} on chain ${chainId} ` +
+        `(${response.status} ${response.statusText}). ` +
+        `Pass an explicit 'toToken' option to bypass symbol resolution.`
+      )
+    }
 
     const { symbol } = await response.json()
-    return symbol || tokenAddress
+
+    if (!symbol) {
+      throw new Error(
+        `LI.FI returned no symbol for token ${tokenAddress} on chain ${chainId}. ` +
+        `Pass an explicit 'toToken' option to bypass symbol resolution.`
+      )
+    }
+
+    return symbol
   }
 
   /** @private */
   _extractFees (quote) {
-    const fee = (quote.estimate.gasCosts || []).reduce(
-      (sum, gc) => sum + BigInt(gc.amount),
-      0n
-    )
+    // Only count SEND-type gas costs (the bridge transaction itself).
+    // LI.FI may also return APPROVE-type costs which won't be paid when
+    // skipApproval is true or the allowance is already sufficient.
+    const fee = (quote.estimate.gasCosts || [])
+      .filter(gc => gc.type === 'SEND')
+      .reduce((sum, gc) => sum + BigInt(gc.amount), 0n)
 
     const bridgeFee = (quote.estimate.feeCosts || []).reduce(
       (sum, fc) => sum + BigInt(fc.amount),
@@ -351,7 +384,7 @@ export default class LifiProtocolEvm extends BridgeProtocol {
       to: transactionRequest.to,
       data: transactionRequest.data,
       value: BigInt(transactionRequest.value ?? 0),
-      gasLimit: BigInt(transactionRequest.gasLimit)
+      gasLimit: BigInt(transactionRequest.gasLimit ?? 300_000)
     }
   }
 
@@ -381,6 +414,8 @@ export default class LifiProtocolEvm extends BridgeProtocol {
         ? await this._account.sendTransaction([resetTx], config)
         : await this._account.sendTransaction(resetTx)
       resetAllowanceHash = result.hash
+      // Wait for the reset to be mined before setting the new allowance.
+      if (!this._isErc4337Account()) await this._provider.waitForTransaction(resetAllowanceHash)
     }
 
     const approveTx = {
@@ -390,6 +425,11 @@ export default class LifiProtocolEvm extends BridgeProtocol {
     const result = this._isErc4337Account()
       ? await this._account.sendTransaction([approveTx], config)
       : await this._account.sendTransaction(approveTx)
+
+    // Wait for the approval to be mined before the bridge transaction is submitted.
+    // Without this, the LI.FI Diamond's transferFrom call arrives before the allowance
+    // is on-chain, producing a TransferFromFailed() revert.
+    if (!this._isErc4337Account()) await this._provider.waitForTransaction(result.hash)
 
     return { approveHash: result.hash, resetAllowanceHash }
   }
