@@ -37,6 +37,8 @@ npm install @tetherto/wdk-protocol-bridge-usdt0-evm
 
 ## 🚀 Quick Start
 
+Before calling `bridge()`, approve the source-chain bridge spender for the token and amount you want to bridge. When you pass `oftContractAddress`, use that same address as the approval `spender`. Some providers also require allowance before `quoteBridge()` because fee quoting estimates the bridge send transaction.
+
 ### Option 1: Using with WDK Core (Recommended)
 
 ```javascript
@@ -59,14 +61,28 @@ const wdk = new WDK(seedPhrase)
 const account = await wdk.getAccount('ethereum', 0)
 const usdt0Bridge = account.getBridgeProtocol('usdt0')
 
+const USDT_TOKEN_ADDRESS = 'USDT_TOKEN_ADDRESS'
+const USDT0_OFT_ADDRESS = 'OFT_CONTRACT_ADDRESS'
+const amount = 1000000n // 1 USDT (6 decimals)
+
+// Approve the source-chain bridge spender before bridging
+await account.approve({
+  token: USDT_TOKEN_ADDRESS,
+  spender: USDT0_OFT_ADDRESS,
+  amount
+})
+
 // Perform bridge
 const result = await usdt0Bridge.bridge({
   targetChain: 'arbitrum',
   recipient: 'RECIPIENT_ADDRESS',
-  token: 'USDT_TOKEN_ADDRESS',
-  amount: 1000000n // 1 USDT (6 decimals)
+  token: USDT_TOKEN_ADDRESS,
+  amount,
+  oftContractAddress: USDT0_OFT_ADDRESS
 })
 ```
+
+Use the source-chain OFT or bridge contract as the approval `spender`. Find current token and bridge contract addresses in the [USDT0 deployments](https://docs.usdt0.to/technical-documentation/deployments). For the route mapping used by this package, see [`src/config.js`](./src/config.js), especially `oftContract`, `legacyMeshContract`, and `xautOftContract`.
 
 ### Option 2: Direct Usage
 
@@ -109,12 +125,23 @@ const smartBridgeProtocol = new Usdt0ProtocolEvm(smartAccount, {
 ### Basic Cross-Chain Bridging
 
 ```javascript
+const USDT_TOKEN_ADDRESS = 'USDT_TOKEN_ADDRESS'
+const ETHEREUM_OFT_ADDRESS = 'ETHEREUM_OFT_CONTRACT_ADDRESS'
+const ARBITRUM_OFT_ADDRESS = 'ARBITRUM_OFT_CONTRACT_ADDRESS'
+
 // Bridge USDT from Ethereum to Arbitrum
+await account.approve({
+  token: USDT_TOKEN_ADDRESS,
+  spender: ETHEREUM_OFT_ADDRESS,
+  amount: 1000000n
+})
+
 const result = await bridgeProtocol.bridge({
   targetChain: 'arbitrum', // Where to send tokens
   recipient: 'RECIPIENT_ADDRESS', // Who gets the tokens on target chain
-  token: 'USDT_TOKEN_ADDRESS', // USDT token address on source chain
-  amount: 1000000n // Amount to bridge (1 USDT with 6 decimals)
+  token: USDT_TOKEN_ADDRESS, // USDT token address on source chain
+  amount: 1000000n, // Amount to bridge (1 USDT with 6 decimals)
+  oftContractAddress: ETHEREUM_OFT_ADDRESS
 })
 
 console.log('Bridge transaction hash:', result.hash)
@@ -122,19 +149,33 @@ console.log('Total fee:', result.fee, 'wei')
 console.log('Bridge fee:', result.bridgeFee, 'wei')
 
 // Bridge from Arbitrum to Ethereum
+await account.approve({
+  token: USDT_TOKEN_ADDRESS,
+  spender: ARBITRUM_OFT_ADDRESS,
+  amount: 5000000n
+})
+
 const reverseResult = await bridgeProtocol.bridge({
   targetChain: 'ethereum',
   recipient: 'RECIPIENT_ADDRESS',
-  token: 'USDT_TOKEN_ADDRESS',
-  amount: 5000000n // 5 USDT
+  token: USDT_TOKEN_ADDRESS,
+  amount: 5000000n, // 5 USDT
+  oftContractAddress: ARBITRUM_OFT_ADDRESS
 })
 
 // Bridge to Polygon
+await account.approve({
+  token: USDT_TOKEN_ADDRESS,
+  spender: ETHEREUM_OFT_ADDRESS,
+  amount: 10000000n
+})
+
 const polygonResult = await bridgeProtocol.bridge({
   targetChain: 'polygon',
   recipient: 'RECIPIENT_ADDRESS',
-  token: 'USDT_TOKEN_ADDRESS',
-  amount: 10000000n // 10 USDT
+  token: USDT_TOKEN_ADDRESS,
+  amount: 10000000n, // 10 USDT
+  oftContractAddress: ETHEREUM_OFT_ADDRESS
 })
 ```
 
@@ -157,12 +198,19 @@ console.log('Total cost:', Number(quote.fee + quote.bridgeFee) / 1e18, 'ETH')
 if (quote.fee + quote.bridgeFee > 100000000000000n) { // More than 0.0001 ETH
   console.log('Bridge fees too high, consider waiting for lower gas prices')
 } else {
+  await account.approve({
+    token: 'USDT_TOKEN_ADDRESS',
+    spender: 'OFT_CONTRACT_ADDRESS',
+    amount: 1000000n
+  })
+
   // Execute the bridge
   const result = await bridgeProtocol.bridge({
     targetChain: 'arbitrum',
     recipient: 'RECIPIENT_ADDRESS',
     token: 'USDT_TOKEN_ADDRESS',
-    amount: 1000000n
+    amount: 1000000n,
+    oftContractAddress: 'OFT_CONTRACT_ADDRESS'
   })
 }
 ```
@@ -170,14 +218,21 @@ if (quote.fee + quote.bridgeFee > 100000000000000n) { // More than 0.0001 ETH
 ### ERC-4337 Smart Account Bridging
 
 ```javascript
+await smartAccount.approve({
+  token: 'USDT_TOKEN_ADDRESS',
+  spender: 'OFT_CONTRACT_ADDRESS',
+  amount: 1000000n
+})
+
 // Bridge using ERC-4337 smart account with sponsored transactions
 const smartAccountResult = await smartBridgeProtocol.bridge({
   targetChain: 'ethereum',
   recipient: 'RECIPIENT_ADDRESS',
   token: 'USDT_TOKEN_ADDRESS',
-  amount: 1000000n
+  amount: 1000000n,
+  oftContractAddress: 'OFT_CONTRACT_ADDRESS'
 }, {
-  paymasterToken: 'USDT', // Use USDT to pay gas fees
+  paymasterToken: { address: 'USDT_TOKEN_ADDRESS' }, // Use USDT to pay gas fees
   bridgeMaxFee: 100000000000000n // Override max fee
 })
 
@@ -191,8 +246,18 @@ console.log('Bridge service fee:', smartAccountResult.bridgeFee)
 ```javascript
 // Bridge different USDT0 ecosystem tokens
 const tokens = [
-  { address: 'USDT_TOKEN_ADDRESS', amount: 1000000n, name: 'USDT' },
-  { address: 'XAUT_TOKEN_ADDRESS', amount: 1000000000000000000n, name: 'XAUT' }, // 18 decimals
+  {
+    address: 'USDT_TOKEN_ADDRESS',
+    spender: 'USDT_OFT_CONTRACT_ADDRESS',
+    amount: 1000000n,
+    name: 'USDT'
+  },
+  {
+    address: 'XAUT_TOKEN_ADDRESS',
+    spender: 'XAUT_OFT_CONTRACT_ADDRESS',
+    amount: 1000000000000000000n,
+    name: 'XAUT'
+  }, // 18 decimals
 ]
 
 for (const token of tokens) {
@@ -209,12 +274,19 @@ for (const token of tokens) {
     console.log(`  Gas fee: ${quote.fee} wei`)
     console.log(`  Bridge fee: ${quote.bridgeFee} wei`)
     
+    await account.approve({
+      token: token.address,
+      spender: token.spender,
+      amount: token.amount
+    })
+
     // Execute bridge
     const result = await bridgeProtocol.bridge({
       targetChain: 'arbitrum',
       recipient: 'RECIPIENT_ADDRESS',
       token: token.address,
-      amount: token.amount
+      amount: token.amount,
+      oftContractAddress: token.spender
     })
     
     console.log(`${token.name} bridge successful: ${result.hash}`)
@@ -228,49 +300,89 @@ for (const token of tokens) {
 ### Bridging to Non-EVM Chains
 
 ```javascript
+const USDT_TOKEN_ADDRESS = 'USDT_TOKEN_ADDRESS'
+const BRIDGE_SPENDER_ADDRESS = 'BRIDGE_SPENDER_ADDRESS'
+
 // Bridge USDT0 from Ethereum to Solana
+await account.approve({
+  token: USDT_TOKEN_ADDRESS,
+  spender: BRIDGE_SPENDER_ADDRESS,
+  amount: 1000000n
+})
+
 const solanaResult = await bridgeProtocol.bridge({
   targetChain: 'solana',
   recipient: 'HyXJcgYpURfDhgzuyRL7zxP4FhLg7LZQMeDrR4MXZcMN', // Solana base58 address
-  token: 'USDT_TOKEN_ADDRESS',
-  amount: 1000000n
+  token: USDT_TOKEN_ADDRESS,
+  amount: 1000000n,
+  oftContractAddress: BRIDGE_SPENDER_ADDRESS
 })
 
 // Bridge USDT0 from Ethereum to TON
-const tonResult = await bridgeProtocol.bridge({
-  targetChain: 'ton',
-  recipient: 'EQAd31gAUhdO0d0NZsNb_cGl_Maa9PSuNhVLE9z8bBSjX6Gq', // TON address
-  token: 'USDT_TOKEN_ADDRESS',
+await account.approve({
+  token: USDT_TOKEN_ADDRESS,
+  spender: BRIDGE_SPENDER_ADDRESS,
   amount: 1000000n
 })
 
+const tonResult = await bridgeProtocol.bridge({
+  targetChain: 'ton',
+  recipient: 'EQAd31gAUhdO0d0NZsNb_cGl_Maa9PSuNhVLE9z8bBSjX6Gq', // TON address
+  token: USDT_TOKEN_ADDRESS,
+  amount: 1000000n,
+  oftContractAddress: BRIDGE_SPENDER_ADDRESS
+})
+
 // Bridge USDT0 from Ethereum to TRON
+await account.approve({
+  token: USDT_TOKEN_ADDRESS,
+  spender: BRIDGE_SPENDER_ADDRESS,
+  amount: 1000000n
+})
+
 const tronResult = await bridgeProtocol.bridge({
   targetChain: 'tron',
   recipient: 'TFG4wBaDQ8sHWWP1ACeSGnoNR6RRzevLPt', // TRON address
-  token: 'USDT_TOKEN_ADDRESS',
-  amount: 1000000n
+  token: USDT_TOKEN_ADDRESS,
+  amount: 1000000n,
+  oftContractAddress: BRIDGE_SPENDER_ADDRESS
 })
 ```
 
 ### Custom Contract Address and Destination EID Overrides
 
 ```javascript
+const USDT_TOKEN_ADDRESS = 'USDT_TOKEN_ADDRESS'
+const CUSTOM_OFT_CONTRACT_ADDRESS = '0xYourCustomOftContractAddress'
+
 // Use a custom OFT contract address (bypasses auto-resolution)
+await account.approve({
+  token: USDT_TOKEN_ADDRESS,
+  spender: CUSTOM_OFT_CONTRACT_ADDRESS,
+  amount: 1000000n
+})
+
 const result = await bridgeProtocol.bridge({
   targetChain: 'arbitrum',
   recipient: 'RECIPIENT_ADDRESS',
-  token: 'USDT_TOKEN_ADDRESS',
+  token: USDT_TOKEN_ADDRESS,
   amount: 1000000n,
-  oftContractAddress: '0xYourCustomOftContractAddress'
+  oftContractAddress: CUSTOM_OFT_CONTRACT_ADDRESS
 })
 
 // Override the destination endpoint ID
+await account.approve({
+  token: USDT_TOKEN_ADDRESS,
+  spender: CUSTOM_OFT_CONTRACT_ADDRESS,
+  amount: 1000000n
+})
+
 const result2 = await bridgeProtocol.bridge({
   targetChain: 'arbitrum',
   recipient: 'RECIPIENT_ADDRESS',
-  token: 'USDT_TOKEN_ADDRESS',
+  token: USDT_TOKEN_ADDRESS,
   amount: 1000000n,
+  oftContractAddress: CUSTOM_OFT_CONTRACT_ADDRESS,
   dstEid: 30110 // Custom LayerZero endpoint ID
 })
 
@@ -278,9 +390,9 @@ const result2 = await bridgeProtocol.bridge({
 const quote = await bridgeProtocol.quoteBridge({
   targetChain: 'arbitrum',
   recipient: 'RECIPIENT_ADDRESS',
-  token: 'USDT_TOKEN_ADDRESS',
+  token: USDT_TOKEN_ADDRESS,
   amount: 1000000n,
-  oftContractAddress: '0xYourCustomOftContractAddress',
+  oftContractAddress: CUSTOM_OFT_CONTRACT_ADDRESS,
   dstEid: 30110
 })
 ```
@@ -375,11 +487,18 @@ Bridges tokens between blockchains using the USDT0 protocol.
 
 **Example:**
 ```javascript
+await account.approve({
+  token: 'USDT_TOKEN_ADDRESS',
+  spender: 'OFT_CONTRACT_ADDRESS',
+  amount: 1000000n
+})
+
 const result = await bridgeProtocol.bridge({
   targetChain: 'arbitrum',
   recipient: 'RECIPIENT_ADDRESS',
   token: 'USDT_TOKEN_ADDRESS',
-  amount: 1000000n // 1 USDT (6 decimals)
+  amount: 1000000n, // 1 USDT (6 decimals)
+  oftContractAddress: 'OFT_CONTRACT_ADDRESS'
 })
 ```
 
