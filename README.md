@@ -82,6 +82,8 @@ const result = await usdt0Bridge.bridge({
 })
 ```
 
+Use the source-chain OFT or bridge contract as the approval `spender`. Find current token and bridge contract addresses in the [USDT0 deployments](https://docs.usdt0.to/technical-documentation/deployments). For the route mapping used by this package, see [`src/config.js`](./src/config.js), especially `oftContract`, `legacyMeshContract`, and `xautOftContract`.
+
 ### Option 2: Direct Usage
 
 ### Creating a New Bridge Service
@@ -220,8 +222,6 @@ await smartAccount.approve({
   token: 'USDT_TOKEN_ADDRESS',
   spender: 'OFT_CONTRACT_ADDRESS',
   amount: 1000000n
-}, {
-  paymasterToken: { address: 'USDT_TOKEN_ADDRESS' }
 })
 
 // Bridge using ERC-4337 smart account with sponsored transactions
