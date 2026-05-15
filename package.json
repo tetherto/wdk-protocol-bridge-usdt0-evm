@@ -1,6 +1,6 @@
 {
   "name": "@tetherto/wdk-protocol-bridge-usdt0-evm",
-  "version": "1.0.0-beta.3",
+  "version": "1.0.0-beta.4",
   "description": "A simple package that lets @tetherto/wdk-wallet-evm and wallet-evm-erc-4337 wallet accounts interact with the usdt0 protocol.",
   "keywords": [
     "wdk",
@@ -27,9 +27,9 @@
   },
   "dependencies": {
     "@layerzerolabs/lz-v2-utilities": "3.0.114",
-    "@tetherto/wdk-wallet": "1.0.0-beta.7",
-    "@tetherto/wdk-wallet-evm": "1.0.0-beta.8",
-    "@tetherto/wdk-wallet-evm-erc-4337": "1.0.0-beta.5",
+    "@tetherto/wdk-wallet": "1.0.0-beta.8",
+    "@tetherto/wdk-wallet-evm": "1.0.0-beta.12",
+    "@tetherto/wdk-wallet-evm-erc-4337": "1.0.0-beta.6",
     "@ton/core": "0.61.0",
     "bare-node-runtime": "^1.1.4",
     "ethers": "6.13.5",
@@ -67,5 +67,12 @@
       "bare.js",
       "tests/**/*.js"
     ]
-  }
+  },
+  "directories": {
+    "test": "tests"
+  },
+  "bugs": {
+    "url": "https://github.com/tetherto/wdk-protocol-bridge-usdt0-evm/issues"
+  },
+  "homepage": "https://github.com/tetherto/wdk-protocol-bridge-usdt0-evm#readme"
 }
