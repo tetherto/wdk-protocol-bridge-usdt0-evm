@@ -467,6 +467,8 @@ const bridgeProtocol = new Usdt0ProtocolEvm(account, {
 |--------|-------------|---------|
 | `bridge(options, config?)` | Bridges tokens between EVM chains | `Promise<BridgeResult>` |
 | `quoteBridge(options, config?)` | Gets the cost of a bridge operation | `Promise<Omit<BridgeResult, 'hash'>>` |
+| `getSupportedChains()` | Lists the chains supported for bridging | `Promise<SwidgeSupportedChain[]>` |
+| `getSupportedTokens(options?)` | Lists the tokens supported for bridging, optionally scoped to a chain/token | `Promise<SwidgeSupportedToken[]>` |
 
 ##### `bridge(options, config?)`
 Bridges tokens between blockchains using the USDT0 protocol.
@@ -520,6 +522,40 @@ const quote = await bridgeProtocol.quoteBridge({
   amount: 1000000n
 })
 ```
+
+##### `getSupportedChains()`
+Returns the chains supported for bridging. Discovery is derived from the bundled config, so it makes no network calls. Asynchronous to match the WDK swidge `getSupportedChains()` contract.
+
+**Returns:** `Promise<SwidgeSupportedChain[]>` - One entry per supported chain, each `{ id, name, type, nativeToken }`. The shape matches the WDK swidge `getSupportedChains()` contract.
+
+**Example:**
+```javascript
+const chains = await bridgeProtocol.getSupportedChains()
+// [{ id: 'ethereum', name: 'Ethereum', type: 'evm', nativeToken: 'ETH' }, ...]
+```
+
+##### `getSupportedTokens(options?)`
+Returns the tokens supported for bridging. A token (USDT0 or XAUT0) is reported on a chain when the corresponding bridge contract is configured for that chain. Discovery makes no network calls; the on-chain token `address` is not resolved and is therefore omitted. Asynchronous to match the WDK swidge `getSupportedTokens()` contract.
+
+**Parameters:**
+- `options` (`SwidgeSupportedTokensOptions`, optional): Optional filters
+  - `fromChain` (string | number, optional): Scope results to a chain (key, `chainId`, or `eid`)
+  - `toChain` (string | number, optional): Used when `fromChain` is absent
+  - `fromToken` (string, optional): Scope results to a token symbol (e.g. `'USDT0'`)
+
+**Returns:** `Promise<SwidgeSupportedToken[]>` - Each `{ token, chain, symbol, decimals, name }`. The shape matches the WDK swidge `getSupportedTokens()` contract.
+
+**Example:**
+```javascript
+// Every supported token on every chain
+const allTokens = await bridgeProtocol.getSupportedTokens()
+
+// Tokens available on a specific chain
+const onArbitrum = await bridgeProtocol.getSupportedTokens({ fromChain: 'arbitrum' })
+// [{ token: 'USDT0', chain: 'arbitrum', symbol: 'USDT0', decimals: 6, name: 'USDT0' }, ...]
+```
+
+**Note:** Non-EVM destinations (Solana, TON, TRON) are reachable as bridge targets but are not reported by `getSupportedTokens` because they have no source-chain bridge contract entry in the config.
 
 ## 🌐 Supported Networks
 

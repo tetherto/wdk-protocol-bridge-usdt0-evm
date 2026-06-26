@@ -24,7 +24,7 @@ import { Address } from '@ton/core'
 import { TronWeb } from 'tronweb'
 
 import { OFT_ABI, TRANSACTION_VALUE_HELPER_ABI } from './abi.js'
-import { FEE_TOLERANCE, BLOCKCHAINS } from './config.js'
+import { FEE_TOLERANCE, BLOCKCHAINS, TOKENS } from './config.js'
 
 /** @typedef {import('@tetherto/wdk-wallet/protocols').BridgeProtocolConfig} BridgeProtocolConfig */
 /** @typedef {import('@tetherto/wdk-wallet/protocols').BridgeResult} BridgeResult */
@@ -34,6 +34,43 @@ import { FEE_TOLERANCE, BLOCKCHAINS } from './config.js'
 /** @typedef {import('@tetherto/wdk-wallet-evm-erc-4337').EvmErc4337WalletPaymasterTokenConfig} EvmErc4337WalletPaymasterTokenConfig */
 /** @typedef {import('@tetherto/wdk-wallet-evm-erc-4337').EvmErc4337WalletSponsorshipPolicyConfig} EvmErc4337WalletSponsorshipPolicyConfig */
 /** @typedef {import('@tetherto/wdk-wallet-evm-erc-4337').EvmErc4337WalletNativeCoinsConfig} EvmErc4337WalletNativeCoinsConfig */
+
+/**
+ * A chain supported by the protocol, in the canonical WDK swidge shape.
+ *
+ * Mirrors `SwidgeSupportedChain` from `@tetherto/wdk-wallet/protocols`; declared locally until the swidge migration.
+ *
+ * @typedef {Object} SwidgeSupportedChain
+ * @property {string | number} id - The provider-specific chain identifier.
+ * @property {string} name - The human-readable chain name.
+ * @property {string} type - The chain or virtual machine type (e.g., 'evm', 'svm', 'ton', 'tvm').
+ * @property {string} nativeToken - The symbol of the chain's native token.
+ */
+
+/**
+ * A token supported by the protocol, in the canonical WDK swidge shape.
+ *
+ * Mirrors `SwidgeSupportedToken` from `@tetherto/wdk-wallet/protocols`; declared locally until the swidge migration.
+ *
+ * @typedef {Object} SwidgeSupportedToken
+ * @property {string} token - The provider-specific token identifier to use in operations.
+ * @property {string | number} chain - The chain on which the token is available.
+ * @property {string} symbol - The token symbol.
+ * @property {number} decimals - The number of decimal places for the token's base unit.
+ * @property {string} [address] - The token contract address, if applicable.
+ * @property {string} [name] - The token's full name.
+ */
+
+/**
+ * Optional filters for chain- or route-scoped token discovery.
+ *
+ * Mirrors `SwidgeSupportedTokensOptions` from `@tetherto/wdk-wallet/protocols`; declared locally until the swidge migration.
+ *
+ * @typedef {Object} SwidgeSupportedTokensOptions
+ * @property {string | number} [fromChain] - The optional source chain for route-scoped discovery.
+ * @property {string} [fromToken] - The optional source token for route-scoped discovery.
+ * @property {string | number} [toChain] - The optional destination chain for route-scoped discovery.
+ */
 
 /**
  * @typedef {object} BridgeOptions
@@ -151,6 +188,95 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
     const { fee } = await this._account.quoteSendTransaction(oftTx)
 
     return { fee, bridgeFee }
+  }
+
+  /**
+   * Retrieves the chains supported by the protocol for bridge operations.
+   *
+   * Derived from the static config, in the canonical WDK swidge shape.
+   *
+   * @returns {Promise<SwidgeSupportedChain[]>} The supported chains.
+   */
+  async getSupportedChains () {
+    return Object.entries(BLOCKCHAINS).map(([id, { name, type, nativeToken }]) => ({
+      id,
+      name,
+      type,
+      nativeToken
+    }))
+  }
+
+  /**
+   * Retrieves the tokens supported by the protocol for bridge operations.
+   *
+   * Derived from the static config; the on-chain token `address` is not resolved and is omitted.
+   *
+   * @param {SwidgeSupportedTokensOptions} [options] - Optional filters for chain- or token-scoped discovery.
+   * @returns {Promise<SwidgeSupportedToken[]>} The supported tokens.
+   */
+  async getSupportedTokens (options = {}) {
+    const { fromChain, toChain, fromToken } = options ?? {}
+
+    const scope = fromChain ?? toChain
+    const scopeKey = scope !== undefined ? this._resolveChainKey(scope) : undefined
+
+    if (scope !== undefined && !scopeKey) {
+      return []
+    }
+
+    const tokenFilter = fromToken ? String(fromToken).toLowerCase() : undefined
+
+    /** @type {SwidgeSupportedToken[]} */
+    const tokens = []
+
+    for (const [chainKey, chainConfig] of Object.entries(BLOCKCHAINS)) {
+      if (scopeKey && chainKey !== scopeKey) {
+        continue
+      }
+
+      for (const tokenConfig of Object.values(TOKENS)) {
+        const isSupported = tokenConfig.contractKeys.some((key) => Boolean(chainConfig[key]))
+
+        if (!isSupported) {
+          continue
+        }
+
+        if (tokenFilter && tokenConfig.symbol.toLowerCase() !== tokenFilter) {
+          continue
+        }
+
+        tokens.push({
+          token: tokenConfig.symbol,
+          chain: chainKey,
+          symbol: tokenConfig.symbol,
+          decimals: tokenConfig.decimals,
+          name: tokenConfig.name
+        })
+      }
+    }
+
+    return tokens
+  }
+
+  /** @private */
+  _resolveChainKey (chain) {
+    if (chain === undefined || chain === null) {
+      return undefined
+    }
+
+    const asString = String(chain).toLowerCase()
+
+    if (Object.prototype.hasOwnProperty.call(BLOCKCHAINS, asString)) {
+      return asString
+    }
+
+    for (const [key, entry] of Object.entries(BLOCKCHAINS)) {
+      if (String(entry.chainId) === asString || String(entry.eid) === asString) {
+        return key
+      }
+    }
+
+    return undefined
   }
 
   /** @private */
