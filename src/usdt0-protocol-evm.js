@@ -214,7 +214,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
    * @param {SwidgeSupportedTokensOptions} [options] - Optional filters for chain- or token-scoped discovery.
    * @returns {Promise<SwidgeSupportedToken[]>} The supported tokens.
    */
-  async getSupportedTokens (options = {}) {
+  async getSupportedTokens (options) {
     const { fromChain, toChain, fromToken } = options ?? {}
 
     const scope = fromChain ?? toChain
@@ -260,10 +260,6 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
 
   /** @private */
   _resolveChainKey (chain) {
-    if (chain === undefined || chain === null) {
-      return undefined
-    }
-
     const asString = String(chain).toLowerCase()
 
     if (Object.prototype.hasOwnProperty.call(BLOCKCHAINS, asString)) {

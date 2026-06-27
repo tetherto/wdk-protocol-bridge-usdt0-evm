@@ -359,20 +359,20 @@ describe('Usdt0ProtocolEvm', () => {
     })
 
     describe('getSupportedChains', () => {
-      test('resolves to every configured chain in swidge shape', async () => {
+      test('resolves to configured chains in swidge shape', async () => {
         const chains = await protocol.getSupportedChains()
 
-        expect(chains).toHaveLength(25)
+        const byId = Object.fromEntries(chains.map((chain) => [chain.id, chain]))
 
-        expect(chains[0]).toEqual({ id: 'ethereum', name: 'Ethereum', type: 'evm', nativeToken: 'ETH' })
+        expect(byId.ethereum).toEqual({ id: 'ethereum', name: 'Ethereum', type: 'evm', nativeToken: 'ETH' })
 
-        expect(chains[20]).toEqual({ id: 'avalanche', name: 'Avalanche', type: 'evm', nativeToken: 'AVAX' })
+        expect(byId.avalanche).toEqual({ id: 'avalanche', name: 'Avalanche', type: 'evm', nativeToken: 'AVAX' })
 
-        expect(chains[22]).toEqual({ id: 'solana', name: 'Solana', type: 'svm', nativeToken: 'SOL' })
+        expect(byId.solana).toEqual({ id: 'solana', name: 'Solana', type: 'svm', nativeToken: 'SOL' })
 
-        expect(chains[23]).toEqual({ id: 'ton', name: 'TON', type: 'ton', nativeToken: 'TON' })
+        expect(byId.ton).toEqual({ id: 'ton', name: 'TON', type: 'ton', nativeToken: 'TON' })
 
-        expect(chains[24]).toEqual({ id: 'tron', name: 'TRON', type: 'tvm', nativeToken: 'TRX' })
+        expect(byId.tron).toEqual({ id: 'tron', name: 'TRON', type: 'tvm', nativeToken: 'TRX' })
       })
     })
 
@@ -432,12 +432,22 @@ describe('Usdt0ProtocolEvm', () => {
         expect(await protocol.getSupportedTokens({ fromChain: 'not-a-chain' })).toEqual([])
       })
 
-      test('returns every token across every chain when called without options', async () => {
-        expect(await protocol.getSupportedTokens()).toHaveLength(31)
+      test('returns tokens across every chain when called without options', async () => {
+        const all = await protocol.getSupportedTokens()
+
+        expect(all).toContainEqual({ token: 'USDT0', chain: 'ethereum', symbol: 'USDT0', decimals: 6, name: 'USDT0' })
+
+        expect(all).toContainEqual({ token: 'XAUT0', chain: 'avalanche', symbol: 'XAUT0', decimals: 6, name: 'Tether Gold' })
+
+        expect(all).toContainEqual({ token: 'USDT0', chain: 'optimism', symbol: 'USDT0', decimals: 6, name: 'USDT0' })
       })
 
       test('treats null options the same as no options', async () => {
-        expect(await protocol.getSupportedTokens(null)).toHaveLength(31)
+        const all = await protocol.getSupportedTokens(null)
+
+        expect(all).toContainEqual({ token: 'USDT0', chain: 'ethereum', symbol: 'USDT0', decimals: 6, name: 'USDT0' })
+
+        expect(all).toContainEqual({ token: 'XAUT0', chain: 'avalanche', symbol: 'XAUT0', decimals: 6, name: 'Tether Gold' })
       })
     })
   })
