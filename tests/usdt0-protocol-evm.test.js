@@ -357,6 +357,99 @@ describe('Usdt0ProtocolEvm', () => {
         })
       })
     })
+
+    describe('getSupportedChains', () => {
+      test('resolves to configured chains in swidge shape', async () => {
+        const chains = await protocol.getSupportedChains()
+
+        const byId = Object.fromEntries(chains.map((chain) => [chain.id, chain]))
+
+        expect(byId.ethereum).toEqual({ id: 'ethereum', name: 'Ethereum', type: 'evm', nativeToken: 'ETH' })
+
+        expect(byId.avalanche).toEqual({ id: 'avalanche', name: 'Avalanche', type: 'evm', nativeToken: 'AVAX' })
+
+        expect(byId.solana).toEqual({ id: 'solana', name: 'Solana', type: 'svm', nativeToken: 'SOL' })
+
+        expect(byId.ton).toEqual({ id: 'ton', name: 'TON', type: 'ton', nativeToken: 'TON' })
+
+        expect(byId.tron).toEqual({ id: 'tron', name: 'TRON', type: 'tvm', nativeToken: 'TRX' })
+      })
+    })
+
+    describe('getSupportedTokens', () => {
+      test('derives both tokens on a chain that has every contract', async () => {
+        expect(await protocol.getSupportedTokens({ fromChain: 'ethereum' })).toEqual([
+          { token: 'USDT0', chain: 'ethereum', symbol: 'USDT0', decimals: 6, name: 'USDT0' },
+          { token: 'XAUT0', chain: 'ethereum', symbol: 'XAUT0', decimals: 6, name: 'Tether Gold' }
+        ])
+      })
+
+      test('returns only XAUT0 for an xaut-only chain (avalanche)', async () => {
+        expect(await protocol.getSupportedTokens({ fromChain: 'avalanche' })).toEqual([
+          { token: 'XAUT0', chain: 'avalanche', symbol: 'XAUT0', decimals: 6, name: 'Tether Gold' }
+        ])
+      })
+
+      test('returns only USDT0 for a usdt0-only chain (optimism)', async () => {
+        expect(await protocol.getSupportedTokens({ fromChain: 'optimism' })).toEqual([
+          { token: 'USDT0', chain: 'optimism', symbol: 'USDT0', decimals: 6, name: 'USDT0' }
+        ])
+      })
+
+      test('resolves the scope chain by chainId', async () => {
+        expect(await protocol.getSupportedTokens({ fromChain: 42_161 })).toEqual([
+          { token: 'USDT0', chain: 'arbitrum', symbol: 'USDT0', decimals: 6, name: 'USDT0' },
+          { token: 'XAUT0', chain: 'arbitrum', symbol: 'XAUT0', decimals: 6, name: 'Tether Gold' }
+        ])
+      })
+
+      test('resolves the scope chain by LayerZero eid', async () => {
+        expect(await protocol.getSupportedTokens({ fromChain: 30_110 })).toEqual([
+          { token: 'USDT0', chain: 'arbitrum', symbol: 'USDT0', decimals: 6, name: 'USDT0' },
+          { token: 'XAUT0', chain: 'arbitrum', symbol: 'XAUT0', decimals: 6, name: 'Tether Gold' }
+        ])
+      })
+
+      test('excludes destination-only non-EVM chains lacking contract entries', async () => {
+        expect(await protocol.getSupportedTokens({ fromChain: 'solana' })).toEqual([])
+        expect(await protocol.getSupportedTokens({ fromChain: 'ton' })).toEqual([])
+        expect(await protocol.getSupportedTokens({ fromChain: 'tron' })).toEqual([])
+      })
+
+      test('supports toChain scoping when fromChain is absent', async () => {
+        expect(await protocol.getSupportedTokens({ toChain: 'avalanche' })).toEqual([
+          { token: 'XAUT0', chain: 'avalanche', symbol: 'XAUT0', decimals: 6, name: 'Tether Gold' }
+        ])
+      })
+
+      test('filters by fromToken symbol', async () => {
+        expect(await protocol.getSupportedTokens({ fromChain: 'ethereum', fromToken: 'USDT0' })).toEqual([
+          { token: 'USDT0', chain: 'ethereum', symbol: 'USDT0', decimals: 6, name: 'USDT0' }
+        ])
+      })
+
+      test('returns an empty list for an unresolvable scope', async () => {
+        expect(await protocol.getSupportedTokens({ fromChain: 'not-a-chain' })).toEqual([])
+      })
+
+      test('returns tokens across every chain when called without options', async () => {
+        const all = await protocol.getSupportedTokens()
+
+        expect(all).toContainEqual({ token: 'USDT0', chain: 'ethereum', symbol: 'USDT0', decimals: 6, name: 'USDT0' })
+
+        expect(all).toContainEqual({ token: 'XAUT0', chain: 'avalanche', symbol: 'XAUT0', decimals: 6, name: 'Tether Gold' })
+
+        expect(all).toContainEqual({ token: 'USDT0', chain: 'optimism', symbol: 'USDT0', decimals: 6, name: 'USDT0' })
+      })
+
+      test('treats null options the same as no options', async () => {
+        const all = await protocol.getSupportedTokens(null)
+
+        expect(all).toContainEqual({ token: 'USDT0', chain: 'ethereum', symbol: 'USDT0', decimals: 6, name: 'USDT0' })
+
+        expect(all).toContainEqual({ token: 'XAUT0', chain: 'avalanche', symbol: 'XAUT0', decimals: 6, name: 'Tether Gold' })
+      })
+    })
   })
 
   describe('with WalletAccountEvmErc4337', () => {

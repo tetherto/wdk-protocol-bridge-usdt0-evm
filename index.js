@@ -20,4 +20,10 @@
 
 /** @typedef {import('./src/usdt0-protocol-evm.js').BridgeOptions} BridgeOptions */
 
+/** @typedef {import('./src/usdt0-protocol-evm.js').SwidgeSupportedChain} SwidgeSupportedChain */
+
+/** @typedef {import('./src/usdt0-protocol-evm.js').SwidgeSupportedToken} SwidgeSupportedToken */
+
+/** @typedef {import('./src/usdt0-protocol-evm.js').SwidgeSupportedTokensOptions} SwidgeSupportedTokensOptions */
+
 export { default } from './src/usdt0-protocol-evm.js'
