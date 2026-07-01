@@ -117,9 +117,8 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
   /**
    * Bridges a token to a different blockchain.
    *
-   * For standard (non erc-4337) accounts, users must first approve the necessary amount of tokens to the usdt0 protocol
-   * using the {@link WalletAccountEvm#approve} method. For erc-4337 accounts the approval is bundled into the same user
-   * operation as the bridge, so no prior approval is required.
+   * Standard (non erc-4337) accounts must approve the tokens to the usdt0 protocol via {@link WalletAccountEvm#approve},
+   * unless already approved. Erc-4337 accounts bundle the approval automatically, so no prior approval is needed.
    *
    * @param {BridgeOptions} options - The bridge's options. Optionally pass 'oftContractAddress' to use a custom OFT contract address instead of the auto-resolved one, and/or 'dstEid' to
    *   override the destination endpoint id.
@@ -166,9 +165,8 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
   /**
    * Quotes the costs of a bridge operation.
    *
-   * For standard (non erc-4337) accounts, users must first approve the necessary amount of tokens to the usdt0 protocol
-   * using the {@link WalletAccountEvm#approve} method, otherwise the quote will fail. For erc-4337 accounts the approval
-   * is bundled into the simulated user operation, so quoting works without a prior approval.
+   * Standard (non erc-4337) accounts must approve the tokens to the usdt0 protocol via {@link WalletAccountEvm#approve},
+   * unless already approved, otherwise the quote fails. Erc-4337 accounts bundle the approval automatically.
    *
    * @param {BridgeOptions} options - The bridge's options. Optionally pass 'oftContractAddress' to use a custom OFT contract address instead of the auto-resolved one, and/or 'dstEid' to
    *   override the destination endpoint id.
