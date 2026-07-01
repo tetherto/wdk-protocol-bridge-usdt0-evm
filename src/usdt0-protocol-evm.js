@@ -311,7 +311,13 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
 
       const { nativeFee, lzTokenFee } = await oftContract.quoteSend(sendParam, false)
 
-      const bridgeFee = await transactionValueHelper.quoteSend(sendParam, [nativeFee, lzTokenFee])
+      const totalBridgedAmount = await transactionValueHelper.quoteSend(sendParam, [nativeFee, lzTokenFee])
+
+      if (totalBridgedAmount < amount) {
+        throw new Error('The transaction value helper returned a total bridged amount lower than the amount to bridge.')
+      }
+
+      const bridgeFee = totalBridgedAmount - amount
 
       const fee = { nativeFee, lzTokenFee: 0 }
 

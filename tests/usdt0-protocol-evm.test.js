@@ -108,7 +108,7 @@ const APPROVE_TRANSACTION = {
   ERC4337: {
     to: TOKEN,
     value: 0,
-    data: '0x095ea7b3000000000000000000000000a90f03c856d01f698e7071b393387cd75a8a319a0000000000000000000000000000000000000000000000000000000000002f44'
+    data: '0x095ea7b3000000000000000000000000a90f03c856d01f698e7071b393387cd75a8a319a0000000000000000000000000000000000000000000000000000000000002ecc'
   }
 }
 
@@ -509,7 +509,7 @@ describe('Usdt0ProtocolEvm', () => {
         expect(result).toEqual({
           hash: 'dummy-user-operation-hash',
           fee: 12_345n,
-          bridgeFee: 10_000n
+          bridgeFee: 9_900n
         })
       })
 
@@ -582,7 +582,7 @@ describe('Usdt0ProtocolEvm', () => {
 
         expect(result).toEqual({
           fee: 12_345n,
-          bridgeFee: 10_000n
+          bridgeFee: 9_900n
         })
       })
 
