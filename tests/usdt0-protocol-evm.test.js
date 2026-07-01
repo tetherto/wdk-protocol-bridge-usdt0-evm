@@ -200,6 +200,13 @@ describe('Usdt0ProtocolEvm', () => {
       oftCmd: new Uint8Array([ ])
     }
 
+    const DUMMY_APPROVE_TRANSACTION = {
+      to: TOKEN,
+      value: 0,
+      data: new ethers.Interface(['function approve(address spender, uint256 amount) returns (bool)'])
+        .encodeFunctionData('approve', ['0xa90f03c856D01F698E7071B393387cd75a8a319A', 12_100n])
+    }
+
     const DUMMY_BRIDGE_TRANSACTION = {
       to: '0xa90f03c856D01F698E7071B393387cd75a8a319A',
       value: 0,
@@ -247,9 +254,9 @@ describe('Usdt0ProtocolEvm', () => {
         expect(quoteSendMock).toHaveBeenCalledWith(DUMMY_SEND_PARAM, false)
         expect(quoteSendMock).toHaveBeenCalledWith(DUMMY_SEND_PARAM, [5_000n, 0n])
 
-        expect(account.quoteSendTransaction).toHaveBeenCalledWith([DUMMY_BRIDGE_TRANSACTION], undefined)
+        expect(account.quoteSendTransaction).toHaveBeenCalledWith([DUMMY_APPROVE_TRANSACTION, DUMMY_BRIDGE_TRANSACTION], undefined)
 
-        expect(account.sendTransaction).toHaveBeenCalledWith([DUMMY_BRIDGE_TRANSACTION], undefined)
+        expect(account.sendTransaction).toHaveBeenCalledWith([DUMMY_APPROVE_TRANSACTION, DUMMY_BRIDGE_TRANSACTION], undefined)
 
         expect(result).toEqual({
           hash: 'dummy-user-operation-hash',
@@ -323,7 +330,7 @@ describe('Usdt0ProtocolEvm', () => {
         expect(quoteSendMock).toHaveBeenCalledWith(DUMMY_SEND_PARAM, false)
         expect(quoteSendMock).toHaveBeenCalledWith(DUMMY_SEND_PARAM, [5_000n, 0n])
 
-        expect(account.quoteSendTransaction).toHaveBeenCalledWith([DUMMY_BRIDGE_TRANSACTION], undefined)
+        expect(account.quoteSendTransaction).toHaveBeenCalledWith([DUMMY_APPROVE_TRANSACTION, DUMMY_BRIDGE_TRANSACTION], undefined)
 
         expect(result).toEqual({
           fee: 12_345n,
