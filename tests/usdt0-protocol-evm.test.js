@@ -104,6 +104,14 @@ const BRIDGE_TRANSACTION = {
   }
 }
 
+const APPROVE_TRANSACTION = {
+  ERC4337: {
+    to: TOKEN,
+    value: 0,
+    data: '0x095ea7b3000000000000000000000000a90f03c856d01f698e7071b393387cd75a8a319a0000000000000000000000000000000000000000000000000000000000002f44'
+  }
+}
+
 const getNetworkMock = jest.fn()
 
 const tokenMock = jest.fn()
@@ -494,9 +502,9 @@ describe('Usdt0ProtocolEvm', () => {
         expect(quoteSendMock).toHaveBeenCalledWith(SEND_PARAM.ERC4337, false)
         expect(quoteSendMock).toHaveBeenCalledWith(SEND_PARAM.ERC4337, [5_000n, 0n])
 
-        expect(account.quoteSendTransaction).toHaveBeenCalledWith([BRIDGE_TRANSACTION.ERC4337], undefined)
+        expect(account.quoteSendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337], undefined)
 
-        expect(account.sendTransaction).toHaveBeenCalledWith([BRIDGE_TRANSACTION.ERC4337], undefined)
+        expect(account.sendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337], undefined)
 
         expect(result).toEqual({
           hash: 'dummy-user-operation-hash',
@@ -570,7 +578,7 @@ describe('Usdt0ProtocolEvm', () => {
         expect(quoteSendMock).toHaveBeenCalledWith(SEND_PARAM.ERC4337, false)
         expect(quoteSendMock).toHaveBeenCalledWith(SEND_PARAM.ERC4337, [5_000n, 0n])
 
-        expect(account.quoteSendTransaction).toHaveBeenCalledWith([BRIDGE_TRANSACTION.ERC4337], undefined)
+        expect(account.quoteSendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337], undefined)
 
         expect(result).toEqual({
           fee: 12_345n,

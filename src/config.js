@@ -15,6 +15,7 @@
 'use strict'
 
 export const FEE_TOLERANCE = 999n
+export const APPROVE_FEE_TOLERANCE = 120n
 
 export const BLOCKCHAINS = {
   ethereum: {
