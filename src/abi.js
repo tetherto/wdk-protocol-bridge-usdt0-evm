@@ -15,6 +15,11 @@
 'use strict'
 
 /** @internal */
+export const ERC20_ABI = [
+  'function approve(address spender, uint256 amount) returns (bool)'
+]
+
+/** @internal */
 export const OFT_ABI = [
   'function token() view returns (address)',
   'function send(tuple(uint32 dstEid, bytes32 to, uint256 amountLD, uint256 minAmountLD, bytes extraOptions, bytes composeMsg, bytes oftCmd) _sendParam, tuple(uint256 nativeFee, uint256 lzTokenFee) _fee, address _refundAddress) payable returns (tuple(bytes32 guid, uint64 nonce, tuple(uint256 nativeFee, uint256 lzTokenFee) fee) msgReceipt, tuple(uint256 amountSentLD, uint256 amountReceivedLD) oftReceipt)',

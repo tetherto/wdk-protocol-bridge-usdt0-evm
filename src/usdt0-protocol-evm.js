@@ -23,8 +23,8 @@ import { JsonRpcProvider, BrowserProvider, Contract, getBytes, decodeBase58, zer
 import { Address } from '@ton/core'
 import { TronWeb } from 'tronweb'
 
-import { OFT_ABI, TRANSACTION_VALUE_HELPER_ABI } from './abi.js'
-import { FEE_TOLERANCE, BLOCKCHAINS, TOKENS } from './config.js'
+import { ERC20_ABI, OFT_ABI, TRANSACTION_VALUE_HELPER_ABI } from './abi.js'
+import { FEE_TOLERANCE, APPROVE_FEE_TOLERANCE, BLOCKCHAINS, TOKENS } from './config.js'
 
 /** @typedef {import('@tetherto/wdk-wallet/protocols').BridgeProtocolConfig} BridgeProtocolConfig */
 /** @typedef {import('@tetherto/wdk-wallet/protocols').BridgeResult} BridgeResult */
@@ -117,7 +117,8 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
   /**
    * Bridges a token to a different blockchain.
    *
-   * Users must first approve the necessary amount of tokens to the usdt0 protocol using the {@link WalletAccountEvm#approve} or the {@link WalletAccountEvmErc4337#approve} method.
+   * Standard (non erc-4337) accounts must approve the tokens to the usdt0 protocol via {@link WalletAccountEvm#approve},
+   * unless already approved. Erc-4337 accounts bundle the approval automatically, so no prior approval is needed.
    *
    * @param {BridgeOptions} options - The bridge's options. Optionally pass 'oftContractAddress' to use a custom OFT contract address instead of the auto-resolved one, and/or 'dstEid' to
    *   override the destination endpoint id.
@@ -134,18 +135,18 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
       throw new Error('The wallet must be connected to a provider in order to perform bridge operations.')
     }
 
-    const { oftTx, bridgeFee } = await this._getBridgeTransactions({ ...options, amount: BigInt(options.amount) })
+    const { oftTx, approveTx, bridgeFee } = await this._getBridgeTransactions({ ...options, amount: BigInt(options.amount) })
 
     if (this._account instanceof WalletAccountEvmErc4337) {
       const { bridgeMaxFee } = { ...this._config, ...config }
 
-      const { fee } = await this._account.quoteSendTransaction([oftTx], config)
+      const { fee } = await this._account.quoteSendTransaction([approveTx, oftTx], config)
 
       if (bridgeMaxFee !== undefined && fee + bridgeFee >= bridgeMaxFee) {
         throw new Error('Exceeded maximum fee cost for bridge operation.')
       }
 
-      const { hash } = await this._account.sendTransaction([oftTx], config)
+      const { hash } = await this._account.sendTransaction([approveTx, oftTx], config)
 
       return { hash, fee, bridgeFee }
     }
@@ -164,7 +165,8 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
   /**
    * Quotes the costs of a bridge operation.
    *
-   * Users must first approve the necessary amount of tokens to the usdt0 protocol using the {@link WalletAccountEvm#approve} or the {@link WalletAccountEvmErc4337#approve} method.
+   * Standard (non erc-4337) accounts must approve the tokens to the usdt0 protocol via {@link WalletAccountEvm#approve},
+   * unless already approved, otherwise the quote fails. Erc-4337 accounts bundle the approval automatically.
    *
    * @param {BridgeOptions} options - The bridge's options. Optionally pass 'oftContractAddress' to use a custom OFT contract address instead of the auto-resolved one, and/or 'dstEid' to
    *   override the destination endpoint id.
@@ -177,10 +179,10 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
       throw new Error('The wallet must be connected to a provider in order to quote bridge operations.')
     }
 
-    const { oftTx, bridgeFee } = await this._getBridgeTransactions({ ...options, amount: BigInt(options.amount) })
+    const { oftTx, approveTx, bridgeFee } = await this._getBridgeTransactions({ ...options, amount: BigInt(options.amount) })
 
     if (this._account instanceof WalletAccountReadOnlyEvmErc4337) {
-      const { fee } = await this._account.quoteSendTransaction([oftTx], config)
+      const { fee } = await this._account.quoteSendTransaction([approveTx, oftTx], config)
 
       return { fee, bridgeFee }
     }
@@ -304,14 +306,32 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
 
     const sendParam = this._buildOftSendParam(targetChain, recipient, amount, dstEid)
 
-    if (this._account instanceof WalletAccountEvmErc4337) {
+    if (this._account instanceof WalletAccountReadOnlyEvmErc4337) {
       const transactionValueHelper = await this._getTransactionValueHelperContract()
 
       const { nativeFee, lzTokenFee } = await oftContract.quoteSend(sendParam, false)
 
-      const bridgeFee = await transactionValueHelper.quoteSend(sendParam, [nativeFee, lzTokenFee])
+      const totalBridgedAmount = await transactionValueHelper.quoteSend(sendParam, [nativeFee, lzTokenFee])
+
+      if (totalBridgedAmount < amount) {
+        throw new Error('The transaction value helper returned a total bridged amount lower than the amount to bridge.')
+      }
+
+      const bridgeFee = totalBridgedAmount - amount
 
       const fee = { nativeFee, lzTokenFee: 0 }
+
+      const tokenAddress = await oftContract.token()
+
+      const erc20Contract = new Contract(tokenAddress, ERC20_ABI, this._provider)
+
+      const approveAmount = amount + bridgeFee * APPROVE_FEE_TOLERANCE / 100n
+
+      const approveTx = {
+        to: tokenAddress,
+        value: 0,
+        data: erc20Contract.interface.encodeFunctionData('approve', [transactionValueHelper.target, approveAmount])
+      }
 
       const oftTx = {
         to: transactionValueHelper.target,
@@ -319,7 +339,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
         data: transactionValueHelper.interface.encodeFunctionData('send', [oftContract.target, sendParam, fee])
       }
 
-      return { oftTx, bridgeFee }
+      return { oftTx, approveTx, bridgeFee }
     }
 
     const { nativeFee: bridgeFee } = await oftContract.quoteSend(sendParam, false)
