@@ -20,6 +20,12 @@ const SEED = 'cook voyage document eight skate token alien guide drink uncle ter
 
 const USER_ADDRESS = '0xa460AEbce0d3A4BecAd8ccf9D6D4861296c503Bd'
 
+const ERC4337_WALLET_CONFIG = {
+  chainId: 42_161,
+  safeModulesVersion: '0.3.0',
+  provider: 'https://mock-rpc-url.com'
+}
+
 const TOKEN = '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9'
 
 const SOLANA_ADDRESS = 'HyXJcgYpURfDhgzuyRL7zxP4FhLg7LZQMeDrR4MXZcMN'
@@ -462,10 +468,7 @@ describe('Usdt0ProtocolEvm', () => {
 
   describe('with WalletAccountEvmErc4337', () => {
     beforeEach(() => {
-      account = new WalletAccountEvmErc4337(SEED, "0'/0/0", {
-        chainId: 42_161,
-        provider: 'https://mock-rpc-url.com'
-      })
+      account = new WalletAccountEvmErc4337(SEED, "0'/0/0", ERC4337_WALLET_CONFIG)
 
       account.getAddress = jest.fn().mockResolvedValue(USER_ADDRESS)
 
@@ -530,10 +533,7 @@ describe('Usdt0ProtocolEvm', () => {
       })
 
       test('should throw if the account is read-only', async () => {
-        const account = new WalletAccountReadOnlyEvmErc4337(USER_ADDRESS, {
-          chainId: 42_161,
-          provider: 'https://mock-rpc-url.com'
-        })
+        const account = new WalletAccountReadOnlyEvmErc4337(USER_ADDRESS, ERC4337_WALLET_CONFIG)
 
         const protocol = new Usdt0ProtocolEvm(account)
 
@@ -543,7 +543,8 @@ describe('Usdt0ProtocolEvm', () => {
 
       test('should throw if the account is not connected to a provider', async () => {
         const account = new WalletAccountEvmErc4337(SEED, "0'/0/0", {
-          chainId: 42_161
+          chainId: ERC4337_WALLET_CONFIG.chainId,
+          safeModulesVersion: ERC4337_WALLET_CONFIG.safeModulesVersion
         })
 
         const protocol = new Usdt0ProtocolEvm(account)
@@ -588,7 +589,8 @@ describe('Usdt0ProtocolEvm', () => {
 
       test('should throw if the account is not connected to a provider', async () => {
         const account = new WalletAccountEvmErc4337(SEED, "0'/0/0", {
-          chainId: 42_161
+          chainId: ERC4337_WALLET_CONFIG.chainId,
+          safeModulesVersion: ERC4337_WALLET_CONFIG.safeModulesVersion
         })
 
         const protocol = new Usdt0ProtocolEvm(account)
