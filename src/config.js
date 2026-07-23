@@ -25,6 +25,7 @@ export const BLOCKCHAINS = {
     oftContract: '0x6C96dE32CEa08842dcc4058c14d3aaAD7Fa41dee',
     legacyMeshContract: '0x1F748c76dE468e9D11bd340fA9D5CBADf315dFB0',
     xautOftContract: '0xb9c2321BB7D0Db468f570D10A424d1Cc8EFd696C',
+    transactionValueHelper: '0xbCc12949743a4FC86700Eb58c241FbaF722e2d73',
     eid: 30_101,
     chainId: 1
   },
@@ -136,6 +137,7 @@ export const BLOCKCHAINS = {
     nativeToken: 'XPL',
     oftContract: '0x02ca37966753bDdDf11216B73B16C1dE756A7CF9',
     xautOftContract: '0x63aB93cBC9d4ecD9c4947b1A38F458147C08E6F7',
+    transactionValueHelper: '0x49440dF1ecFAF9e684456f32c284CcFD6098DFDd',
     eid: 30_383,
     chainId: 9_745
   },
@@ -145,6 +147,7 @@ export const BLOCKCHAINS = {
     nativeToken: 'POL',
     oftContract: '0x6BA10300f0DC58B7a1e4c0e41f5daBb7D7829e13',
     xautOftContract: '0x5421Cf4288d8007D3c43AC4246eaFCe5b049e352',
+    transactionValueHelper: '0x7B415E83ca5b34Ae64bC638181e8310550Cc285C',
     eid: 30_109,
     chainId: 137
   },
