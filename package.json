@@ -33,7 +33,7 @@
     "@ton/core": "0.61.0",
     "bare-node-runtime": "^1.1.4",
     "ethers": "6.17.0",
-    "tronweb": "6.4.0"
+    "tronweb": "6.5.0"
   },
   "devDependencies": {
     "cross-env": "10.0.0",
