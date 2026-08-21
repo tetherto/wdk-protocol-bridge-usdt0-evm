@@ -82,6 +82,8 @@ import { FEE_TOLERANCE, APPROVE_FEE_TOLERANCE, BLOCKCHAINS, TOKENS } from './con
  * @property {number} [dstEid] - Custom LayerZero destination endpoint ID to override the default for the target chain.
  */
 
+const USDT_MAINNET_ADDRESS = '0xdAC17F958D2ee523a2206206994597C13D831ec7'
+
 export default class Usdt0ProtocolEvm extends BridgeProtocol {
   /**
    * Creates a new read-only interface to the usdt0 protocol for evm blockchains.
@@ -135,18 +137,20 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
       throw new Error('The wallet must be connected to a provider in order to perform bridge operations.')
     }
 
-    const { oftTx, approveTx, bridgeFee } = await this._getBridgeTransactions({ ...options, amount: BigInt(options.amount) })
+    const { oftTx, approveTx, resetTx, bridgeFee } = await this._getBridgeTransactions({ ...options, amount: BigInt(options.amount) })
 
     if (this._account instanceof WalletAccountEvmErc4337) {
       const { bridgeMaxFee } = { ...this._config, ...config }
 
-      const { fee } = await this._account.quoteSendTransaction([approveTx, oftTx], config)
+      const txs = resetTx ? [resetTx, approveTx, oftTx] : [approveTx, oftTx]
+
+      const { fee } = await this._account.quoteSendTransaction(txs, config)
 
       if (bridgeMaxFee !== undefined && fee + bridgeFee >= bridgeMaxFee) {
         throw new Error('Exceeded maximum fee cost for bridge operation.')
       }
 
-      const { hash } = await this._account.sendTransaction([approveTx, oftTx], config)
+      const { hash } = await this._account.sendTransaction(txs, config)
 
       return { hash, fee, bridgeFee }
     }
@@ -179,10 +183,12 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
       throw new Error('The wallet must be connected to a provider in order to quote bridge operations.')
     }
 
-    const { oftTx, approveTx, bridgeFee } = await this._getBridgeTransactions({ ...options, amount: BigInt(options.amount) })
+    const { oftTx, approveTx, resetTx, bridgeFee } = await this._getBridgeTransactions({ ...options, amount: BigInt(options.amount) })
 
     if (this._account instanceof WalletAccountReadOnlyEvmErc4337) {
-      const { fee } = await this._account.quoteSendTransaction([approveTx, oftTx], config)
+      const txs = resetTx ? [resetTx, approveTx, oftTx] : [approveTx, oftTx]
+
+      const { fee } = await this._account.quoteSendTransaction(txs, config)
 
       return { fee, bridgeFee }
     }
@@ -333,13 +339,26 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
         data: erc20Contract.interface.encodeFunctionData('approve', [transactionValueHelper.target, approveAmount])
       }
 
+      let resetTx
+      const { chainId } = await this._provider.getNetwork()
+      if (chainId === 1n && tokenAddress.toLowerCase() === USDT_MAINNET_ADDRESS.toLowerCase()) {
+        const currentAllowance = await this._account.getAllowance(tokenAddress, transactionValueHelper.target)
+        if (currentAllowance > 0n && approveAmount > 0n) {
+          resetTx = {
+            to: tokenAddress,
+            value: 0,
+            data: erc20Contract.interface.encodeFunctionData('approve', [transactionValueHelper.target, 0n])
+          }
+        }
+      }
+
       const oftTx = {
         to: transactionValueHelper.target,
         value: 0,
         data: transactionValueHelper.interface.encodeFunctionData('send', [oftContract.target, sendParam, fee])
       }
 
-      return { oftTx, approveTx, bridgeFee }
+      return { oftTx, approveTx, resetTx, bridgeFee }
     }
 
     const { nativeFee: bridgeFee } = await oftContract.quoteSend(sendParam, false)

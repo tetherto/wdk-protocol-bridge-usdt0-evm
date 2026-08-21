@@ -28,6 +28,8 @@ const ERC4337_WALLET_CONFIG = {
 
 const TOKEN = '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9'
 
+const USDT_MAINNET_ADDRESS = '0xdAC17F958D2ee523a2206206994597C13D831ec7'
+
 const SOLANA_ADDRESS = 'HyXJcgYpURfDhgzuyRL7zxP4FhLg7LZQMeDrR4MXZcMN'
 
 const TON_ADDRESS = 'EQAd31gAUhdO0d0NZsNb_cGl_Maa9PSuNhVLE9z8bBSjX6Gq'
@@ -107,6 +109,11 @@ const BRIDGE_TRANSACTION = {
     to: '0xa90f03c856D01F698E7071B393387cd75a8a319A',
     value: 0,
     data: '0x11bbdd1400000000000000000000000014e4a1b13bf7f943c8ff7c51fb60fa964a298d920000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000138800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007595000000000000000000000000a460aebce0d3a4becad8ccf9d6d4861296c503bd0000000000000000000000000000000000000000000000000000000000000064000000000000000000000000000000000000000000000000000000000000006300000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000012000000000000000000000000000000000000000000000000000000000000001400000000000000000000000000000000000000000000000000000000000000002000300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
+  },
+  ERC4337_ETHEREUM: {
+    to: '0xbCc12949743a4FC86700Eb58c241FbaF722e2d73',
+    value: 0,
+    data: '0x11bbdd140000000000000000000000006c96de32cea08842dcc4058c14d3aaad7fa41dee000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000013880000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000759e000000000000000000000000a460aebce0d3a4becad8ccf9d6d4861296c503bd0000000000000000000000000000000000000000000000000000000000000064000000000000000000000000000000000000000000000000000000000000006300000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000012000000000000000000000000000000000000000000000000000000000000001400000000000000000000000000000000000000000000000000000000000000002000300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
   }
 }
 
@@ -115,6 +122,24 @@ const APPROVE_TRANSACTION = {
     to: TOKEN,
     value: 0,
     data: '0x095ea7b3000000000000000000000000a90f03c856d01f698e7071b393387cd75a8a319a0000000000000000000000000000000000000000000000000000000000002ecc'
+  },
+  ERC4337_ETHEREUM: {
+    to: USDT_MAINNET_ADDRESS,
+    value: 0,
+    data: '0x095ea7b3000000000000000000000000bcc12949743a4fc86700eb58c241fbaf722e2d730000000000000000000000000000000000000000000000000000000000002ecc'
+  },
+  ERC4337_ETHEREUM_TOKEN: {
+    to: TOKEN,
+    value: 0,
+    data: '0x095ea7b3000000000000000000000000bcc12949743a4fc86700eb58c241fbaf722e2d730000000000000000000000000000000000000000000000000000000000002ecc'
+  }
+}
+
+const RESET_ALLOWANCE_TRANSACTION = {
+  ERC4337_ETHEREUM: {
+    to: USDT_MAINNET_ADDRESS,
+    value: 0,
+    data: '0x095ea7b3000000000000000000000000bcc12949743a4fc86700eb58c241fbaf722e2d730000000000000000000000000000000000000000000000000000000000000000'
   }
 }
 
@@ -472,6 +497,8 @@ describe('Usdt0ProtocolEvm', () => {
 
       account.getAddress = jest.fn().mockResolvedValue(USER_ADDRESS)
 
+      account.getAllowance = jest.fn().mockResolvedValue(0n)
+
       protocol = new Usdt0ProtocolEvm(account)
 
       getNetworkMock.mockResolvedValue({ chainId: 42_161n })
@@ -481,6 +508,7 @@ describe('Usdt0ProtocolEvm', () => {
       beforeEach(() => {
         tokenMock.mockResolvedValue(TOKEN)
 
+        quoteSendMock.mockReset()
         quoteSendMock
           .mockResolvedValueOnce({ nativeFee: 5_000n, lzTokenFee: 0n })
           .mockResolvedValueOnce(10_000n)
@@ -514,6 +542,109 @@ describe('Usdt0ProtocolEvm', () => {
           fee: 12_345n,
           bridgeFee: 9_900n
         })
+      })
+
+      test('should reset Ethereum mainnet USDT allowance to zero before a non-zero approve', async () => {
+        getNetworkMock.mockResolvedValue({ chainId: 1n })
+        tokenMock.mockResolvedValue(USDT_MAINNET_ADDRESS)
+        account.getAllowance = jest.fn().mockResolvedValue(1n)
+
+        const result = await protocol.bridge({
+          targetChain: 'arbitrum',
+          recipient: USER_ADDRESS,
+          token: USDT_MAINNET_ADDRESS,
+          amount: 100
+        })
+
+        expect(quoteSendMock).toHaveBeenCalledWith(SEND_PARAM.EVM, false)
+        expect(quoteSendMock).toHaveBeenCalledWith(SEND_PARAM.EVM, [5_000n, 0n])
+
+        expect(account.getAllowance).toHaveBeenCalledWith(USDT_MAINNET_ADDRESS, '0xbCc12949743a4FC86700Eb58c241FbaF722e2d73')
+
+        expect(account.quoteSendTransaction).toHaveBeenCalledWith([
+          RESET_ALLOWANCE_TRANSACTION.ERC4337_ETHEREUM,
+          APPROVE_TRANSACTION.ERC4337_ETHEREUM,
+          BRIDGE_TRANSACTION.ERC4337_ETHEREUM
+        ], undefined)
+
+        expect(account.sendTransaction).toHaveBeenCalledWith([
+          RESET_ALLOWANCE_TRANSACTION.ERC4337_ETHEREUM,
+          APPROVE_TRANSACTION.ERC4337_ETHEREUM,
+          BRIDGE_TRANSACTION.ERC4337_ETHEREUM
+        ], undefined)
+
+        expect(result).toEqual({
+          hash: 'dummy-user-operation-hash',
+          fee: 12_345n,
+          bridgeFee: 9_900n
+        })
+      })
+
+      test('should successfully approve Ethereum mainnet USDT when allowance is zero', async () => {
+        getNetworkMock.mockResolvedValue({ chainId: 1n })
+        tokenMock.mockResolvedValue(USDT_MAINNET_ADDRESS)
+        account.getAllowance = jest.fn().mockResolvedValue(0n)
+
+        const result = await protocol.bridge({
+          targetChain: 'arbitrum',
+          recipient: USER_ADDRESS,
+          token: USDT_MAINNET_ADDRESS,
+          amount: 100
+        })
+
+        expect(account.getAllowance).toHaveBeenCalledWith(USDT_MAINNET_ADDRESS, '0xbCc12949743a4FC86700Eb58c241FbaF722e2d73')
+
+        expect(account.quoteSendTransaction).toHaveBeenCalledWith([
+          APPROVE_TRANSACTION.ERC4337_ETHEREUM,
+          BRIDGE_TRANSACTION.ERC4337_ETHEREUM
+        ], undefined)
+
+        expect(account.sendTransaction).toHaveBeenCalledWith([
+          APPROVE_TRANSACTION.ERC4337_ETHEREUM,
+          BRIDGE_TRANSACTION.ERC4337_ETHEREUM
+        ], undefined)
+
+        expect(result).toEqual({
+          hash: 'dummy-user-operation-hash',
+          fee: 12_345n,
+          bridgeFee: 9_900n
+        })
+      })
+
+      test('should approve a token without checking the allowance when the token is not USDT on mainnet', async () => {
+        getNetworkMock.mockResolvedValue({ chainId: 1n })
+        account.getAllowance = jest.fn().mockResolvedValue(1n)
+
+        await protocol.bridge({
+          targetChain: 'arbitrum',
+          recipient: USER_ADDRESS,
+          token: TOKEN,
+          amount: 100
+        })
+
+        expect(account.getAllowance).not.toHaveBeenCalled()
+
+        expect(account.quoteSendTransaction).toHaveBeenCalledWith([
+          APPROVE_TRANSACTION.ERC4337_ETHEREUM_TOKEN,
+          BRIDGE_TRANSACTION.ERC4337_ETHEREUM
+        ], undefined)
+      })
+
+      test('should approve USDT without checking the allowance on non-mainnet chains', async () => {
+        account.getAllowance = jest.fn().mockResolvedValue(1n)
+
+        await protocol.bridge({
+          targetChain: 'ethereum',
+          recipient: USER_ADDRESS,
+          token: TOKEN,
+          amount: 100
+        })
+
+        expect(account.getAllowance).not.toHaveBeenCalled()
+
+        expect(account.quoteSendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337], undefined)
+
+        expect(account.sendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337], undefined)
       })
 
       test('should throw if the bridge fee exceeds the bridge max fee configuration', async () => {
@@ -558,9 +689,10 @@ describe('Usdt0ProtocolEvm', () => {
       beforeEach(() => {
         tokenMock.mockResolvedValue(TOKEN)
 
+        quoteSendMock.mockReset()
         quoteSendMock
-          .mockResolvedValue({ nativeFee: 5_000n, lzTokenFee: 0n })
-          .mockResolvedValue(10_000n)
+          .mockResolvedValueOnce({ nativeFee: 5_000n, lzTokenFee: 0n })
+          .mockResolvedValueOnce(10_000n)
 
         account.quoteSendTransaction = jest.fn()
           .mockResolvedValueOnce({ fee: 12_345n })
@@ -585,6 +717,48 @@ describe('Usdt0ProtocolEvm', () => {
           fee: 12_345n,
           bridgeFee: 9_900n
         })
+      })
+
+      test('should reset Ethereum mainnet USDT allowance to zero before a non-zero approve', async () => {
+        getNetworkMock.mockResolvedValue({ chainId: 1n })
+        tokenMock.mockResolvedValue(USDT_MAINNET_ADDRESS)
+        account.getAllowance = jest.fn().mockResolvedValue(1n)
+
+        const result = await protocol.quoteBridge({
+          targetChain: 'arbitrum',
+          recipient: USER_ADDRESS,
+          token: USDT_MAINNET_ADDRESS,
+          amount: 100
+        })
+
+        expect(quoteSendMock).toHaveBeenCalledWith(SEND_PARAM.EVM, false)
+        expect(quoteSendMock).toHaveBeenCalledWith(SEND_PARAM.EVM, [5_000n, 0n])
+
+        expect(account.quoteSendTransaction).toHaveBeenCalledWith([
+          RESET_ALLOWANCE_TRANSACTION.ERC4337_ETHEREUM,
+          APPROVE_TRANSACTION.ERC4337_ETHEREUM,
+          BRIDGE_TRANSACTION.ERC4337_ETHEREUM
+        ], undefined)
+
+        expect(result).toEqual({
+          fee: 12_345n,
+          bridgeFee: 9_900n
+        })
+      })
+
+      test('should approve USDT without checking the allowance on non-mainnet chains', async () => {
+        account.getAllowance = jest.fn().mockResolvedValue(1n)
+
+        await protocol.quoteBridge({
+          targetChain: 'ethereum',
+          recipient: USER_ADDRESS,
+          token: TOKEN,
+          amount: 100
+        })
+
+        expect(account.getAllowance).not.toHaveBeenCalled()
+
+        expect(account.quoteSendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337], undefined)
       })
 
       test('should throw if the account is not connected to a provider', async () => {
