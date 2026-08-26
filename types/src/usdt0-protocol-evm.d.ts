@@ -3,18 +3,18 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
      * Creates a new read-only interface to the usdt0 protocol for evm blockchains.
      *
      * @overload
-     * @param {WalletAccountReadOnlyEvm | WalletAccountReadOnlyEvmErc4337} account - The wallet account to use to interact with the protocol.
+     * @param {IWalletAccountReadOnly} account - The wallet account to use to interact with the protocol.
      * @param {BridgeProtocolConfig} [config] - The bridge protocol configuration.
      */
-    constructor(account: WalletAccountReadOnlyEvm | WalletAccountReadOnlyEvmErc4337, config?: BridgeProtocolConfig);
+    constructor(account: IWalletAccountReadOnly, config?: BridgeProtocolConfig);
     /**
      * Creates a new interface to the usdt0 protocol for evm blockchains.
      *
      * @overload
-     * @param {WalletAccountEvm | WalletAccountEvmErc4337} account - The wallet account to use to interact with the protocol.
+     * @param {IWalletAccount} account - The wallet account to use to interact with the protocol.
      * @param {BridgeProtocolConfig} [config] - The bridge protocol configuration.
      */
-    constructor(account: WalletAccountEvm | WalletAccountEvmErc4337, config?: BridgeProtocolConfig);
+    constructor(account: IWalletAccount, config?: BridgeProtocolConfig);
     /** @private */
     private _chainId;
     /** @private */
@@ -22,7 +22,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
     /**
      * Bridges a token to a different blockchain.
      *
-     * Standard (non erc-4337) accounts must approve the tokens to the usdt0 protocol via {@link WalletAccountEvm#approve},
+     * Standard (non erc-4337) accounts must approve the tokens to the usdt0 protocol via the account's `approve` method,
      * unless already approved. Erc-4337 accounts bundle the approval automatically, so no prior approval is needed.
      *
      * @param {BridgeOptions} options - The bridge's options. Optionally pass 'oftContractAddress' to use a custom OFT contract address instead of the auto-resolved one, and/or 'dstEid' to
@@ -35,7 +35,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
     /**
      * Quotes the costs of a bridge operation.
      *
-     * Standard (non erc-4337) accounts must approve the tokens to the usdt0 protocol via {@link WalletAccountEvm#approve},
+     * Standard (non erc-4337) accounts must approve the tokens to the usdt0 protocol via the account's `approve` method,
      * unless already approved, otherwise the quote fails. Erc-4337 accounts bundle the approval automatically.
      *
      * @param {BridgeOptions} options - The bridge's options. Optionally pass 'oftContractAddress' to use a custom OFT contract address instead of the auto-resolved one, and/or 'dstEid' to
@@ -79,7 +79,8 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
 }
 export type BridgeProtocolConfig = import("@tetherto/wdk-wallet/protocols").BridgeProtocolConfig;
 export type BridgeResult = import("@tetherto/wdk-wallet/protocols").BridgeResult;
-export type WalletAccountReadOnlyEvm = import("@tetherto/wdk-wallet-evm").WalletAccountReadOnlyEvm;
+export type IWalletAccount = import("@tetherto/wdk-wallet").IWalletAccount;
+export type IWalletAccountReadOnly = import("@tetherto/wdk-wallet").IWalletAccountReadOnly;
 export type EvmErc4337WalletPaymasterTokenConfig = import("@tetherto/wdk-wallet-evm-erc-4337").EvmErc4337WalletPaymasterTokenConfig;
 export type EvmErc4337WalletSponsorshipPolicyConfig = import("@tetherto/wdk-wallet-evm-erc-4337").EvmErc4337WalletSponsorshipPolicyConfig;
 export type EvmErc4337WalletNativeCoinsConfig = import("@tetherto/wdk-wallet-evm-erc-4337").EvmErc4337WalletNativeCoinsConfig;
@@ -183,6 +184,3 @@ export type BridgeOptions = {
     dstEid?: number;
 };
 import { BridgeProtocol } from '@tetherto/wdk-wallet/protocols';
-import { WalletAccountReadOnlyEvmErc4337 } from '@tetherto/wdk-wallet-evm-erc-4337';
-import { WalletAccountEvm } from '@tetherto/wdk-wallet-evm';
-import { WalletAccountEvmErc4337 } from '@tetherto/wdk-wallet-evm-erc-4337';

@@ -15,7 +15,6 @@
 'use strict'
 
 import { BridgeProtocol } from '@tetherto/wdk-wallet/protocols'
-import { WalletAccountEvm } from '@tetherto/wdk-wallet-evm'
 import { WalletAccountEvmErc4337, WalletAccountReadOnlyEvmErc4337 } from '@tetherto/wdk-wallet-evm-erc-4337'
 
 import { addressToBytes32, Options } from '@layerzerolabs/lz-v2-utilities'
@@ -29,7 +28,8 @@ import { FEE_TOLERANCE, APPROVE_FEE_TOLERANCE, BLOCKCHAINS, TOKENS } from './con
 /** @typedef {import('@tetherto/wdk-wallet/protocols').BridgeProtocolConfig} BridgeProtocolConfig */
 /** @typedef {import('@tetherto/wdk-wallet/protocols').BridgeResult} BridgeResult */
 
-/** @typedef {import('@tetherto/wdk-wallet-evm').WalletAccountReadOnlyEvm} WalletAccountReadOnlyEvm */
+/** @typedef {import('@tetherto/wdk-wallet').IWalletAccount} IWalletAccount */
+/** @typedef {import('@tetherto/wdk-wallet').IWalletAccountReadOnly} IWalletAccountReadOnly */
 
 /** @typedef {import('@tetherto/wdk-wallet-evm-erc-4337').EvmErc4337WalletPaymasterTokenConfig} EvmErc4337WalletPaymasterTokenConfig */
 /** @typedef {import('@tetherto/wdk-wallet-evm-erc-4337').EvmErc4337WalletSponsorshipPolicyConfig} EvmErc4337WalletSponsorshipPolicyConfig */
@@ -89,7 +89,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
    * Creates a new read-only interface to the usdt0 protocol for evm blockchains.
    *
    * @overload
-   * @param {WalletAccountReadOnlyEvm | WalletAccountReadOnlyEvmErc4337} account - The wallet account to use to interact with the protocol.
+   * @param {IWalletAccountReadOnly} account - The wallet account to use to interact with the protocol.
    * @param {BridgeProtocolConfig} [config] - The bridge protocol configuration.
    */
 
@@ -97,7 +97,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
    * Creates a new interface to the usdt0 protocol for evm blockchains.
    *
    * @overload
-   * @param {WalletAccountEvm | WalletAccountEvmErc4337} account - The wallet account to use to interact with the protocol.
+   * @param {IWalletAccount} account - The wallet account to use to interact with the protocol.
    * @param {BridgeProtocolConfig} [config] - The bridge protocol configuration.
    */
   constructor (account, config = {}) {
@@ -119,7 +119,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
   /**
    * Bridges a token to a different blockchain.
    *
-   * Standard (non erc-4337) accounts must approve the tokens to the usdt0 protocol via {@link WalletAccountEvm#approve},
+   * Standard (non erc-4337) accounts must approve the tokens to the usdt0 protocol via the account's `approve` method,
    * unless already approved. Erc-4337 accounts bundle the approval automatically, so no prior approval is needed.
    *
    * @param {BridgeOptions} options - The bridge's options. Optionally pass 'oftContractAddress' to use a custom OFT contract address instead of the auto-resolved one, and/or 'dstEid' to
@@ -129,7 +129,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
    * @returns {Promise<BridgeResult>} The bridge's result.
    */
   async bridge (options, config) {
-    if (!(this._account instanceof WalletAccountEvm) && !(this._account instanceof WalletAccountEvmErc4337)) {
+    if (typeof this._account.sendTransaction !== 'function') {
       throw new Error("The 'bridge(options)' method requires the protocol to be initialized with a non read-only account.")
     }
 
@@ -169,7 +169,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
   /**
    * Quotes the costs of a bridge operation.
    *
-   * Standard (non erc-4337) accounts must approve the tokens to the usdt0 protocol via {@link WalletAccountEvm#approve},
+   * Standard (non erc-4337) accounts must approve the tokens to the usdt0 protocol via the account's `approve` method,
    * unless already approved, otherwise the quote fails. Erc-4337 accounts bundle the approval automatically.
    *
    * @param {BridgeOptions} options - The bridge's options. Optionally pass 'oftContractAddress' to use a custom OFT contract address instead of the auto-resolved one, and/or 'dstEid' to
