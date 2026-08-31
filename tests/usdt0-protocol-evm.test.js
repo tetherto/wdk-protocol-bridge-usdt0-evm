@@ -540,7 +540,7 @@ describe('Usdt0ProtocolEvm', () => {
         expect(result).toEqual({
           hash: 'dummy-user-operation-hash',
           fee: 12_345n,
-          bridgeFee: 9_900n
+          bridgeFee: 5_000n
         })
       })
 
@@ -576,7 +576,7 @@ describe('Usdt0ProtocolEvm', () => {
         expect(result).toEqual({
           hash: 'dummy-user-operation-hash',
           fee: 12_345n,
-          bridgeFee: 9_900n
+          bridgeFee: 5_000n
         })
       })
 
@@ -607,7 +607,7 @@ describe('Usdt0ProtocolEvm', () => {
         expect(result).toEqual({
           hash: 'dummy-user-operation-hash',
           fee: 12_345n,
-          bridgeFee: 9_900n
+          bridgeFee: 5_000n
         })
       })
 
@@ -715,7 +715,7 @@ describe('Usdt0ProtocolEvm', () => {
 
         expect(result).toEqual({
           fee: 12_345n,
-          bridgeFee: 9_900n
+          bridgeFee: 5_000n
         })
       })
 
@@ -742,7 +742,7 @@ describe('Usdt0ProtocolEvm', () => {
 
         expect(result).toEqual({
           fee: 12_345n,
-          bridgeFee: 9_900n
+          bridgeFee: 5_000n
         })
       })
 
