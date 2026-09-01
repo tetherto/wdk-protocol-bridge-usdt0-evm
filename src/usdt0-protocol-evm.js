@@ -16,6 +16,7 @@
 
 import { BridgeProtocol } from '@tetherto/wdk-wallet/protocols'
 import { WalletAccountEvmErc4337, WalletAccountReadOnlyEvmErc4337 } from '@tetherto/wdk-wallet-evm-erc-4337'
+import { validateEVMAddress, validateSolanaAddress, validateTonAddress, validateTronAddress } from '@tetherto/wdk-utils'
 
 import { addressToBytes32, Options } from '@layerzerolabs/lz-v2-utilities'
 import { JsonRpcProvider, BrowserProvider, Contract, getBytes, decodeBase58, zeroPadValue, toBeHex } from 'ethers'
@@ -429,13 +430,33 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
     let to
 
     if (targetChain === 'ton') {
-      to = '0x' + Address.parse(recipient).toRawString().slice(2)
+      this._assertValidRecipient(validateTonAddress(recipient), targetChain)
+
+      const address = Address.parse(recipient)
+
+      // The bytes32 destination drops the workchain, and only the basechain (0) holds jetton wallets.
+      if (address.workChain !== 0) {
+        throw new Error(`Invalid recipient address for target chain '${targetChain}': UNSUPPORTED_WORKCHAIN.`)
+      }
+
+      to = '0x' + address.toRawString().split(':')[1]
     } else if (targetChain === 'tron') {
+      this._assertValidRecipient(validateTronAddress(recipient), targetChain)
+
       to = addressToBytes32('0x' + TronWeb.address.toHex(recipient))
     } else if (targetChain === 'solana') {
+      this._assertValidRecipient(validateSolanaAddress(recipient), targetChain)
+
       to = zeroPadValue(toBeHex(decodeBase58(recipient)), 32)
     } else {
+      this._assertValidRecipient(validateEVMAddress(recipient), targetChain)
+
       to = addressToBytes32(recipient)
+    }
+
+    // Reject the zero address: valid in format but irrecoverable. `to` may be hex or bytes, so normalize.
+    if (getBytes(to).every((byte) => byte === 0)) {
+      throw new Error(`Invalid recipient address for target chain '${targetChain}': ZERO_ADDRESS.`)
     }
 
     return {
@@ -446,6 +467,13 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
       extraOptions: options.toBytes(),
       composeMsg: getBytes('0x'),
       oftCmd: getBytes('0x')
+    }
+  }
+
+  /** @private */
+  _assertValidRecipient (result, targetChain) {
+    if (!result.success) {
+      throw new Error(`Invalid recipient address for target chain '${targetChain}': ${result.reason}.`)
     }
   }
 

@@ -397,6 +397,74 @@ describe('Usdt0ProtocolEvm', () => {
       })
     })
 
+    describe('recipient address validation', () => {
+      beforeEach(() => {
+        tokenMock.mockResolvedValue(TOKEN)
+
+        quoteSendMock.mockResolvedValue({ nativeFee: 10_000n })
+      })
+
+      const bridgeTo = (targetChain, recipient) => protocol.bridge({ targetChain, recipient, token: TOKEN, amount: 100 })
+
+      test('rejects wrong-chain or malformed Solana recipients', async () => {
+        const invalidRecipients = [
+          '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa', // Bitcoin P2PKH
+          '3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy', // Bitcoin P2SH
+          'EPjFWdd5AufqSSqeM2qN1xzybap', // truncated Solana address
+          'A' // single character
+        ]
+
+        for (const recipient of invalidRecipients) {
+          await expect(bridgeTo('solana', recipient)).rejects.toThrow(/Invalid recipient address for target chain 'solana'/)
+        }
+      })
+
+      test('rejects wrong-chain or empty Tron recipients', async () => {
+        const invalidRecipients = [
+          '0xdAC17F958D2ee523a2206206994597C13D831ec7', // Ethereum address (would be silently prepended with 41)
+          '', // empty string (would decode to the zero address)
+          '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa' // Bitcoin address
+        ]
+
+        for (const recipient of invalidRecipients) {
+          await expect(bridgeTo('tron', recipient)).rejects.toThrow(/Invalid recipient address for target chain 'tron'/)
+        }
+      })
+
+      test('rejects a TON masterchain (workchain -1) recipient', async () => {
+        await expect(bridgeTo('ton', 'Ef8zMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzM0vF'))
+          .rejects.toThrow("Invalid recipient address for target chain 'ton': UNSUPPORTED_WORKCHAIN.")
+      })
+
+      test('rejects a TON recipient with a tampered checksum', async () => {
+        await expect(bridgeTo('ton', 'EQDKbjIcfM6ezt8KjKJJLshZJJSqX7XOA4ff-W72r5gqPrHG'))
+          .rejects.toThrow(/Invalid recipient address for target chain 'ton'/)
+      })
+
+      test('rejects an invalid EVM recipient', async () => {
+        await expect(bridgeTo('arbitrum', 'not-an-address'))
+          .rejects.toThrow(/Invalid recipient address for target chain 'arbitrum'/)
+      })
+
+      test('rejects zero / burn recipients that pass format validation', async () => {
+        await expect(bridgeTo('arbitrum', '0x0000000000000000000000000000000000000000'))
+          .rejects.toThrow("Invalid recipient address for target chain 'arbitrum': ZERO_ADDRESS.")
+
+        await expect(bridgeTo('solana', '11111111111111111111111111111111'))
+          .rejects.toThrow("Invalid recipient address for target chain 'solana': ZERO_ADDRESS.")
+
+        await expect(bridgeTo('ton', '0:' + '0'.repeat(64)))
+          .rejects.toThrow("Invalid recipient address for target chain 'ton': ZERO_ADDRESS.")
+      })
+
+      test('encodes a valid TON basechain recipient as clean 32-byte hex', () => {
+        const { to } = protocol._buildOftSendParam('ton', TON_ADDRESS, 100n)
+
+        expect(to).toMatch(/^0x[0-9a-f]{64}$/)
+        expect(to).not.toContain(':')
+      })
+    })
+
     describe('getSupportedChains', () => {
       test('resolves to configured chains in swidge shape', async () => {
         const chains = await protocol.getSupportedChains()
