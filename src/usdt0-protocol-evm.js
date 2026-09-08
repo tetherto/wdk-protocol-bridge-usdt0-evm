@@ -323,7 +323,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
         throw new Error('The transaction value helper returned a total bridged amount lower than the amount to bridge.')
       }
 
-      const bridgeFee = totalBridgedAmount - amount
+      const tokenFee = totalBridgedAmount - amount
 
       const fee = { nativeFee, lzTokenFee: 0 }
 
@@ -331,7 +331,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
 
       const erc20Contract = new Contract(tokenAddress, ERC20_ABI, this._provider)
 
-      const approveAmount = amount + bridgeFee * APPROVE_FEE_TOLERANCE / 100n
+      const approveAmount = amount + tokenFee * APPROVE_FEE_TOLERANCE / 100n
 
       const approveTx = {
         to: tokenAddress,
@@ -358,7 +358,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
         data: transactionValueHelper.interface.encodeFunctionData('send', [oftContract.target, sendParam, fee])
       }
 
-      return { oftTx, approveTx, resetTx, bridgeFee }
+      return { oftTx, approveTx, resetTx, bridgeFee: nativeFee }
     }
 
     const { nativeFee: bridgeFee } = await oftContract.quoteSend(sendParam, false)
