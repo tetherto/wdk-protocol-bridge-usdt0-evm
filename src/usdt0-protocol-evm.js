@@ -434,7 +434,6 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
 
       const address = Address.parse(recipient)
 
-      // The bytes32 destination drops the workchain, and only the basechain (0) holds jetton wallets.
       if (address.workChain !== 0) {
         throw new Error(`Invalid recipient address for target chain '${targetChain}': UNSUPPORTED_WORKCHAIN.`)
       }
@@ -454,7 +453,6 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
       to = addressToBytes32(recipient)
     }
 
-    // Reject the zero address: valid in format but irrecoverable. `to` may be hex or bytes, so normalize.
     if (getBytes(to).every((byte) => byte === 0)) {
       throw new Error(`Invalid recipient address for target chain '${targetChain}': ZERO_ADDRESS.`)
     }
