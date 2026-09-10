@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "@layerzerolabs/lz-v2-utilities": "3.0.114",
-    "@tetherto/wdk-utils": "1.0.0-beta.11",
+    "@tetherto/wdk-utils": "1.0.0-beta.12",
     "@tetherto/wdk-wallet": "1.0.0-beta.13",
     "@tetherto/wdk-wallet-evm": "1.0.0-beta.15",
     "@tetherto/wdk-wallet-evm-erc-4337": "1.0.0-beta.11",
