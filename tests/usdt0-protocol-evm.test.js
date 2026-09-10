@@ -455,6 +455,9 @@ describe('Usdt0ProtocolEvm', () => {
 
         await expect(bridgeTo('ton', '0:' + '0'.repeat(64)))
           .rejects.toThrow("Invalid recipient address for target chain 'ton': ZERO_ADDRESS.")
+
+        await expect(bridgeTo('tron', 'T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb'))
+          .rejects.toThrow("Invalid recipient address for target chain 'tron': ZERO_ADDRESS.")
       })
 
       test('encodes a valid TON basechain recipient as clean 32-byte hex', () => {

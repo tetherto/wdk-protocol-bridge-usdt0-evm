@@ -442,7 +442,13 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
     } else if (targetChain === 'tron') {
       this._assertValidRecipient(validateTronAddress(recipient), targetChain)
 
-      to = addressToBytes32('0x' + TronWeb.address.toHex(recipient))
+      const hex = TronWeb.address.toHex(recipient)
+
+      if (/^410{40}$/i.test(hex)) {
+        throw new Error(`Invalid recipient address for target chain '${targetChain}': ZERO_ADDRESS.`)
+      }
+
+      to = addressToBytes32('0x' + hex)
     } else if (targetChain === 'solana') {
       this._assertValidRecipient(validateSolanaAddress(recipient), targetChain)
 
