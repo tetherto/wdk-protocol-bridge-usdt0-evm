@@ -147,6 +147,8 @@ const getNetworkMock = jest.fn()
 
 const tokenMock = jest.fn()
 
+const helperTokenMock = jest.fn()
+
 const quoteSendMock = jest.fn()
 
 jest.unstable_mockModule('ethers', () => ({
@@ -157,8 +159,14 @@ jest.unstable_mockModule('ethers', () => ({
   Contract: jest.fn().mockImplementation((target, abi, provider) => {
     const contract = new ethers.Contract(target, abi, provider)
 
-    if (abi === OFT_ABI || abi === TRANSACTION_VALUE_HELPER_ABI) {
+    if (abi === OFT_ABI) {
       contract.token = tokenMock
+
+      contract.quoteSend = quoteSendMock
+    }
+
+    if (abi === TRANSACTION_VALUE_HELPER_ABI) {
+      contract.token = helperTokenMock
 
       contract.quoteSend = quoteSendMock
     }
@@ -563,6 +571,10 @@ describe('Usdt0ProtocolEvm', () => {
   })
 
   describe('with WalletAccountEvmErc4337', () => {
+    const XAUT_TOKEN = '0x40461291347e1eCbb09499F3371D3f17f10d7159'
+
+    const XAUT_OFT = '0xf40542a7B66AD7C68C459EE3679635D2fDB6dF39'
+
     beforeEach(() => {
       account = new WalletAccountEvmErc4337(SEED, "0'/0/0", ERC4337_WALLET_CONFIG)
 
@@ -573,6 +585,10 @@ describe('Usdt0ProtocolEvm', () => {
       protocol = new Usdt0ProtocolEvm(account)
 
       getNetworkMock.mockResolvedValue({ chainId: 42_161n })
+
+      helperTokenMock.mockReset()
+
+      helperTokenMock.mockImplementation(() => tokenMock())
     })
 
     describe('bridge', () => {
@@ -718,6 +734,23 @@ describe('Usdt0ProtocolEvm', () => {
         expect(account.sendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337], undefined)
       })
 
+      test('should throw if the token cannot be bridged from erc-4337 accounts', async () => {
+        tokenMock.mockResolvedValue(XAUT_TOKEN)
+        helperTokenMock.mockResolvedValue(TOKEN)
+
+        const promise = protocol.bridge({
+          targetChain: 'ethereum',
+          recipient: USER_ADDRESS,
+          token: XAUT_TOKEN,
+          amount: 100,
+          oftContractAddress: XAUT_OFT
+        })
+
+        await expect(promise).rejects.toThrow(`Token '${XAUT_TOKEN}' cannot be bridged from erc-4337 accounts on chain with id 42161.`)
+
+        expect(account.sendTransaction).not.toHaveBeenCalled()
+      })
+
       test('should throw if the bridge fee exceeds the bridge max fee configuration', async () => {
         const OPTIONS = {
           targetChain: 'ethereum',
@@ -830,6 +863,23 @@ describe('Usdt0ProtocolEvm', () => {
         expect(account.getAllowance).not.toHaveBeenCalled()
 
         expect(account.quoteSendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337], undefined)
+      })
+
+      test('should throw if the token cannot be bridged from erc-4337 accounts', async () => {
+        tokenMock.mockResolvedValue(XAUT_TOKEN)
+        helperTokenMock.mockResolvedValue(TOKEN)
+
+        const promise = protocol.quoteBridge({
+          targetChain: 'ethereum',
+          recipient: USER_ADDRESS,
+          token: XAUT_TOKEN,
+          amount: 100,
+          oftContractAddress: XAUT_OFT
+        })
+
+        await expect(promise).rejects.toThrow(`Token '${XAUT_TOKEN}' cannot be bridged from erc-4337 accounts on chain with id 42161.`)
+
+        expect(account.quoteSendTransaction).not.toHaveBeenCalled()
       })
 
       test('should throw if the account is not connected to a provider', async () => {

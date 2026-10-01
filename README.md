@@ -219,6 +219,8 @@ if (quote.fee + quote.bridgeFee > 100000000000000n) { // More than 0.0001 ETH
 
 ### ERC-4337 Smart Account Bridging
 
+ERC-4337 accounts bridge through the source chain's transaction value helper, which pays the LayerZero fee and charges it in the bridged token. The helper currently supports USD₮0 only: bridging XAUt0 from an ERC-4337 account throws an error (see [#58](https://github.com/tetherto/wdk-protocol-bridge-usdt0-evm/issues/58)).
+
 ```javascript
 await smartAccount.approve({
   token: 'USDT_TOKEN_ADDRESS',
