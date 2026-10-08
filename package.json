@@ -1,6 +1,6 @@
 {
   "name": "@tetherto/wdk-protocol-bridge-usdt0-evm",
-  "version": "1.0.0-beta.10",
+  "version": "1.0.0-beta.11",
   "description": "USD₮0 bridge module for WDK (Wallet Development Kit) by Tether, for cross-chain transfers from EVM wallet accounts.",
   "keywords": [
     "wdk",
