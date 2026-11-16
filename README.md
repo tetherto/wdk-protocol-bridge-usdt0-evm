@@ -245,6 +245,13 @@ console.log('Gas fee paid in USDT:', smartAccountResult.fee)
 console.log('Bridge service fee:', smartAccountResult.bridgeFee)
 ```
 
+For ERC-4337 accounts, `quoteBridge()` and `bridge()` also return `tokenFee`: the
+transaction-value helper's surcharge in the bridged source token's base units.
+`bridgeFee` remains the underlying native fee in wei; it is not an additional
+charge on top of `tokenFee`. The helper quotes a total source-token debit of
+`amount + tokenFee`, before the separate wallet/network `fee`. Approval headroom
+is not part of `tokenFee`. Standard EOA results omit `tokenFee`.
+
 ### Multi-Token Bridging
 
 ```javascript
