@@ -252,6 +252,20 @@ charge on top of `tokenFee`. The helper quotes a total source-token debit of
 `amount + tokenFee`, before the separate wallet/network `fee`. Approval headroom
 is not part of `tokenFee`. Standard EOA results omit `tokenFee`.
 
+Both methods use the exported `Usdt0BridgeResult` type: `bridge()` returns the
+full result and `quoteBridge()` omits only `hash`. Values are calculated for each
+operation; a later send can have different fees from an earlier quote.
+
+| Field | Units | Treatment |
+| --- | --- | --- |
+| `fee` | Wallet fee units: native wei or the configured paymaster token's base units | Separate transaction/network charge |
+| `bridgeFee` | Native wei | LayerZero messaging cost; for ERC-4337 the helper recovers this through `tokenFee` |
+| `tokenFee` | Bridged source-token base units; ERC-4337 only | Added to the bridge principal; excludes approval headroom and `fee` |
+
+The Solana SDK follows the same result-type and method convention, but its
+`oftFee` is deducted from the transfer and its `amountReceived` is already net.
+Do not treat that deduction as an EVM-style surcharge or subtract it twice.
+
 ### Multi-Token Bridging
 
 ```javascript
@@ -476,8 +490,8 @@ const bridgeProtocol = new Usdt0ProtocolEvm(account, {
 
 | Method | Description | Returns |
 |--------|-------------|---------|
-| `bridge(options, config?)` | Bridges tokens between EVM chains | `Promise<BridgeResult>` |
-| `quoteBridge(options, config?)` | Gets the cost of a bridge operation | `Promise<Omit<BridgeResult, 'hash'>>` |
+| `bridge(options, config?)` | Bridges tokens between EVM chains | `Promise<Usdt0BridgeResult>` |
+| `quoteBridge(options, config?)` | Gets the cost of a bridge operation | `Promise<Omit<Usdt0BridgeResult, 'hash'>>` |
 | `getSupportedChains()` | Lists the chains supported for bridging | `Promise<SwidgeSupportedChain[]>` |
 | `getSupportedTokens(options?)` | Lists the tokens supported for bridging, optionally scoped to a chain/token | `Promise<SwidgeSupportedToken[]>` |
 
