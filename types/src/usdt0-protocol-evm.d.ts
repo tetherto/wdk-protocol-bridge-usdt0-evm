@@ -87,7 +87,7 @@ export type BridgeResult = import("@tetherto/wdk-wallet/protocols").BridgeResult
  * ERC-4337 tokenFee is the helper surcharge in source-token base units, excluding approval headroom and network fees.
  */
 export type Usdt0BridgeResult = BridgeResult & {
-    tokenFee?: bigint;
+    tokenFee: bigint;
 };
 export type IWalletAccount = import("@tetherto/wdk-wallet").IWalletAccount;
 export type IWalletAccountReadOnly = import("@tetherto/wdk-wallet").IWalletAccountReadOnly;

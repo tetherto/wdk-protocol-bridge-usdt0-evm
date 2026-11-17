@@ -226,7 +226,8 @@ describe('Usdt0ProtocolEvm', () => {
         expect(result).toEqual({
           hash: 'dummy-bridge-hash',
           fee: 12_345n,
-          bridgeFee: 10_000n
+          bridgeFee: 10_000n,
+          tokenFee: 0n
         })
       })
 
@@ -288,7 +289,8 @@ describe('Usdt0ProtocolEvm', () => {
         expect(result).toEqual({
           hash: 'dummy-solana-bridge-hash',
           fee: 12_345n,
-          bridgeFee: 10_000n
+          bridgeFee: 10_000n,
+          tokenFee: 0n
         })
       })
 
@@ -314,7 +316,8 @@ describe('Usdt0ProtocolEvm', () => {
         expect(result).toEqual({
           hash: 'dummy-ton-bridge-hash',
           fee: 12_345n,
-          bridgeFee: 10_000n
+          bridgeFee: 10_000n,
+          tokenFee: 0n
         })
       })
 
@@ -340,7 +343,8 @@ describe('Usdt0ProtocolEvm', () => {
         expect(result).toEqual({
           hash: 'dummy-tron-bridge-hash',
           fee: 12_345n,
-          bridgeFee: 10_000n
+          bridgeFee: 10_000n,
+          tokenFee: 0n
         })
       })
     })
@@ -371,7 +375,8 @@ describe('Usdt0ProtocolEvm', () => {
 
         expect(result).toEqual({
           fee: 12_345n,
-          bridgeFee: 10_000n
+          bridgeFee: 10_000n,
+          tokenFee: 0n
         })
       })
 
@@ -400,7 +405,8 @@ describe('Usdt0ProtocolEvm', () => {
 
         expect(result).toEqual({
           fee: 12_345n,
-          bridgeFee: 10_000n
+          bridgeFee: 10_000n,
+          tokenFee: 0n
         })
       })
     })

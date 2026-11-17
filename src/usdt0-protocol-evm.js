@@ -29,7 +29,7 @@ import { FEE_TOLERANCE, APPROVE_FEE_TOLERANCE, BLOCKCHAINS, TOKENS } from './con
 /** @typedef {import('@tetherto/wdk-wallet/protocols').BridgeProtocolConfig} BridgeProtocolConfig */
 /** @typedef {import('@tetherto/wdk-wallet/protocols').BridgeResult} BridgeResult */
 
-/** @typedef {BridgeResult & { tokenFee?: bigint }} Usdt0BridgeResult ERC-4337 tokenFee is the helper surcharge in source-token base units, excluding approval headroom and network fees. */
+/** @typedef {BridgeResult & { tokenFee: bigint }} Usdt0BridgeResult ERC-4337 tokenFee is the helper surcharge in source-token base units, excluding approval headroom and network fees. */
 
 /** @typedef {import('@tetherto/wdk-wallet').IWalletAccount} IWalletAccount */
 /** @typedef {import('@tetherto/wdk-wallet').IWalletAccountReadOnly} IWalletAccountReadOnly */
@@ -167,7 +167,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
 
     const { hash } = await this._account.sendTransaction(oftTx)
 
-    return { hash, fee, bridgeFee }
+    return { hash, fee, bridgeFee, tokenFee }
   }
 
   /**
@@ -200,7 +200,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
 
     const { fee } = await this._account.quoteSendTransaction(oftTx)
 
-    return { fee, bridgeFee }
+    return { fee, bridgeFee, tokenFee }
   }
 
   /**
@@ -376,7 +376,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
       data: oftContract.interface.encodeFunctionData('send', [sendParam, fee, address])
     }
 
-    return { oftTx, bridgeFee }
+    return { oftTx, bridgeFee, tokenFee: 0n }
   }
 
   /** @private */
