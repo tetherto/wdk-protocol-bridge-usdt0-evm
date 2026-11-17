@@ -3,6 +3,7 @@ export type BridgeProtocolConfig = import("@tetherto/wdk-wallet/protocols").Brid
 export type BridgeResult = import("@tetherto/wdk-wallet/protocols").BridgeResult;
 export type BridgeOptions = import("./src/usdt0-protocol-evm.js").BridgeOptions;
 export type Usdt0BridgeResult = import("./src/usdt0-protocol-evm.js").Usdt0BridgeResult;
+export type Usdt0BridgeResultExtras = import("./src/usdt0-protocol-evm.js").Usdt0BridgeResultExtras;
 export type SwidgeSupportedChain = import("./src/usdt0-protocol-evm.js").SwidgeSupportedChain;
 export type SwidgeSupportedToken = import("./src/usdt0-protocol-evm.js").SwidgeSupportedToken;
 export type SwidgeSupportedTokensOptions = import("./src/usdt0-protocol-evm.js").SwidgeSupportedTokensOptions;

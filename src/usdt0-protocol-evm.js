@@ -29,7 +29,19 @@ import { FEE_TOLERANCE, APPROVE_FEE_TOLERANCE, BLOCKCHAINS, TOKENS } from './con
 /** @typedef {import('@tetherto/wdk-wallet/protocols').BridgeProtocolConfig} BridgeProtocolConfig */
 /** @typedef {import('@tetherto/wdk-wallet/protocols').BridgeResult} BridgeResult */
 
-/** @typedef {BridgeResult & { tokenFee: bigint }} Usdt0BridgeResult ERC-4337 tokenFee is the helper surcharge in source-token base units, excluding approval headroom and network fees. */
+/**
+ * The usdt0-specific fields of a bridge's result, on top of the WDK {@link BridgeResult}.
+ *
+ * @typedef {Object} Usdt0BridgeResultExtras
+ * @property {bigint} tokenFee - The transaction value helper's surcharge on top of the bridged amount, in the token's base
+ *   units (0 for standard accounts).
+ */
+
+/**
+ * The full result of {@link Usdt0ProtocolEvm#bridge}.
+ *
+ * @typedef {BridgeResult & Usdt0BridgeResultExtras} Usdt0BridgeResult
+ */
 
 /** @typedef {import('@tetherto/wdk-wallet').IWalletAccount} IWalletAccount */
 /** @typedef {import('@tetherto/wdk-wallet').IWalletAccountReadOnly} IWalletAccountReadOnly */

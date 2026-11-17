@@ -84,11 +84,19 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
 export type BridgeProtocolConfig = import("@tetherto/wdk-wallet/protocols").BridgeProtocolConfig;
 export type BridgeResult = import("@tetherto/wdk-wallet/protocols").BridgeResult;
 /**
- * ERC-4337 tokenFee is the helper surcharge in source-token base units, excluding approval headroom and network fees.
+ * The usdt0-specific fields of a bridge's result, on top of the WDK {@link BridgeResult}.
  */
-export type Usdt0BridgeResult = BridgeResult & {
+export type Usdt0BridgeResultExtras = {
+    /**
+     * - The transaction value helper's surcharge on top of the bridged amount, in the token's base
+     * units (0 for standard accounts).
+     */
     tokenFee: bigint;
 };
+/**
+ * The full result of {@link Usdt0ProtocolEvm#bridge}.
+ */
+export type Usdt0BridgeResult = BridgeResult & Usdt0BridgeResultExtras;
 export type IWalletAccount = import("@tetherto/wdk-wallet").IWalletAccount;
 export type IWalletAccountReadOnly = import("@tetherto/wdk-wallet").IWalletAccountReadOnly;
 export type EvmErc4337WalletPaymasterTokenConfig = import("@tetherto/wdk-wallet-evm-erc-4337").EvmErc4337WalletPaymasterTokenConfig;
