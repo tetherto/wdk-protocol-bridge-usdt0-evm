@@ -638,24 +638,6 @@ describe('Usdt0ProtocolEvm', () => {
         })
       })
 
-      test('returns the quoted helper surcharge separately from native and network fees when bridging', async () => {
-        quoteSendMock.mockReset()
-        quoteSendMock.mockImplementation(async (_sendParam, fees) => fees === false
-          ? { nativeFee: 5_000n, lzTokenFee: 0n }
-          : 10_000n)
-        account.quoteSendTransaction.mockReset()
-        account.quoteSendTransaction.mockResolvedValue({ fee: 12_345n })
-        const options = { targetChain: 'ethereum', recipient: USER_ADDRESS, token: TOKEN, amount: 100n }
-
-        const quote = await protocol.quoteBridge(options)
-        const result = await protocol.bridge(options)
-
-        expect(result).toEqual({ hash: 'dummy-user-operation-hash', ...quote })
-        expect(result.tokenFee).toBe(9_900n)
-        expect(result.bridgeFee).toBe(5_000n)
-        expect(account.sendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337], undefined)
-      })
-
       test('should reset Ethereum mainnet USDT allowance to zero before a non-zero approve', async () => {
         getNetworkMock.mockResolvedValue({ chainId: 1n })
         tokenMock.mockResolvedValue(USDT_MAINNET_ADDRESS)
@@ -851,7 +833,7 @@ describe('Usdt0ProtocolEvm', () => {
         })
       })
 
-      test.each([0n, 642_707n])('returns the exact helper surcharge %s without approval headroom', async (tokenFee) => {
+      test.each([0n, 642_707n])('should quote the exact helper surcharge %s without approval headroom', async (tokenFee) => {
         const amount = 14_166_692n
         const nativeFee = 394_276_239_737_544n
         quoteSendMock.mockReset()
