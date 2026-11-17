@@ -29,10 +29,10 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
      *   override the destination endpoint id.
      * @param {Partial<EvmErc4337WalletPaymasterTokenConfig | EvmErc4337WalletSponsorshipPolicyConfig | EvmErc4337WalletNativeCoinsConfig> & Pick<BridgeProtocolConfig, 'bridgeMaxFee'>} [config] - If
      *   the protocol has been initialized with an erc-4337 wallet account, it can be used to override its configuration options along with the 'bridgeMaxFee' option.
-     * @returns {Promise<BridgeResult>} The bridge's result.
+     * @returns {Promise<Usdt0BridgeResult>} The bridge's result.
      * @throws {Error} If the protocol has been initialized with an erc-4337 wallet account and the token cannot be bridged from it on the source chain.
      */
-    bridge(options: BridgeOptions, config?: Partial<EvmErc4337WalletPaymasterTokenConfig | EvmErc4337WalletSponsorshipPolicyConfig | EvmErc4337WalletNativeCoinsConfig> & Pick<BridgeProtocolConfig, "bridgeMaxFee">): Promise<BridgeResult>;
+    bridge(options: BridgeOptions, config?: Partial<EvmErc4337WalletPaymasterTokenConfig | EvmErc4337WalletSponsorshipPolicyConfig | EvmErc4337WalletNativeCoinsConfig> & Pick<BridgeProtocolConfig, "bridgeMaxFee">): Promise<Usdt0BridgeResult>;
     /**
      * Quotes the costs of a bridge operation.
      *
@@ -43,10 +43,10 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
      *   override the destination endpoint id.
      * @param {Partial<EvmErc4337WalletPaymasterTokenConfig | EvmErc4337WalletSponsorshipPolicyConfig | EvmErc4337WalletNativeCoinsConfig>} [config] - If the protocol has been initialized with
      *   an erc-4337 wallet account, it can be used to override its configuration options.
-     * @returns {Promise<Omit<BridgeResult, 'hash'>>} The bridge's quotes.
+     * @returns {Promise<Omit<Usdt0BridgeResult, 'hash'>>} The bridge's quotes.
      * @throws {Error} If the protocol has been initialized with an erc-4337 wallet account and the token cannot be bridged from it on the source chain.
      */
-    quoteBridge(options: BridgeOptions, config?: Partial<EvmErc4337WalletPaymasterTokenConfig | EvmErc4337WalletSponsorshipPolicyConfig | EvmErc4337WalletNativeCoinsConfig>): Promise<Omit<BridgeResult, "hash">>;
+    quoteBridge(options: BridgeOptions, config?: Partial<EvmErc4337WalletPaymasterTokenConfig | EvmErc4337WalletSponsorshipPolicyConfig | EvmErc4337WalletNativeCoinsConfig>): Promise<Omit<Usdt0BridgeResult, "hash">>;
     /**
      * Retrieves the chains supported by the protocol for bridge operations.
      *
@@ -77,10 +77,26 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
     /** @private */
     private _buildOftSendParam;
     /** @private */
+    private _assertValidRecipient;
+    /** @private */
     private _getTransactionValueHelperContract;
 }
 export type BridgeProtocolConfig = import("@tetherto/wdk-wallet/protocols").BridgeProtocolConfig;
 export type BridgeResult = import("@tetherto/wdk-wallet/protocols").BridgeResult;
+/**
+ * The usdt0-specific fields of a bridge's result, on top of the WDK {@link BridgeResult}.
+ */
+export type Usdt0BridgeResultExtras = {
+    /**
+     * - The transaction value helper's surcharge on top of the bridged amount, in the token's base
+     * units (0 for standard accounts).
+     */
+    tokenFee: bigint;
+};
+/**
+ * The full result of {@link Usdt0ProtocolEvm#bridge}.
+ */
+export type Usdt0BridgeResult = BridgeResult & Usdt0BridgeResultExtras;
 export type IWalletAccount = import("@tetherto/wdk-wallet").IWalletAccount;
 export type IWalletAccountReadOnly = import("@tetherto/wdk-wallet").IWalletAccountReadOnly;
 export type EvmErc4337WalletPaymasterTokenConfig = import("@tetherto/wdk-wallet-evm-erc-4337").EvmErc4337WalletPaymasterTokenConfig;

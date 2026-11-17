@@ -20,6 +20,10 @@
 
 /** @typedef {import('./src/usdt0-protocol-evm.js').BridgeOptions} BridgeOptions */
 
+/** @typedef {import('./src/usdt0-protocol-evm.js').Usdt0BridgeResult} Usdt0BridgeResult */
+
+/** @typedef {import('./src/usdt0-protocol-evm.js').Usdt0BridgeResultExtras} Usdt0BridgeResultExtras */
+
 /** @typedef {import('./src/usdt0-protocol-evm.js').SwidgeSupportedChain} SwidgeSupportedChain */
 
 /** @typedef {import('./src/usdt0-protocol-evm.js').SwidgeSupportedToken} SwidgeSupportedToken */

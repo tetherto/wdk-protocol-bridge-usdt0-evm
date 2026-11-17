@@ -226,7 +226,8 @@ describe('Usdt0ProtocolEvm', () => {
         expect(result).toEqual({
           hash: 'dummy-bridge-hash',
           fee: 12_345n,
-          bridgeFee: 10_000n
+          bridgeFee: 10_000n,
+          tokenFee: 0n
         })
       })
 
@@ -288,7 +289,8 @@ describe('Usdt0ProtocolEvm', () => {
         expect(result).toEqual({
           hash: 'dummy-solana-bridge-hash',
           fee: 12_345n,
-          bridgeFee: 10_000n
+          bridgeFee: 10_000n,
+          tokenFee: 0n
         })
       })
 
@@ -314,7 +316,8 @@ describe('Usdt0ProtocolEvm', () => {
         expect(result).toEqual({
           hash: 'dummy-ton-bridge-hash',
           fee: 12_345n,
-          bridgeFee: 10_000n
+          bridgeFee: 10_000n,
+          tokenFee: 0n
         })
       })
 
@@ -340,7 +343,8 @@ describe('Usdt0ProtocolEvm', () => {
         expect(result).toEqual({
           hash: 'dummy-tron-bridge-hash',
           fee: 12_345n,
-          bridgeFee: 10_000n
+          bridgeFee: 10_000n,
+          tokenFee: 0n
         })
       })
     })
@@ -371,7 +375,8 @@ describe('Usdt0ProtocolEvm', () => {
 
         expect(result).toEqual({
           fee: 12_345n,
-          bridgeFee: 10_000n
+          bridgeFee: 10_000n,
+          tokenFee: 0n
         })
       })
 
@@ -400,7 +405,8 @@ describe('Usdt0ProtocolEvm', () => {
 
         expect(result).toEqual({
           fee: 12_345n,
-          bridgeFee: 10_000n
+          bridgeFee: 10_000n,
+          tokenFee: 0n
         })
       })
     })
@@ -627,7 +633,8 @@ describe('Usdt0ProtocolEvm', () => {
         expect(result).toEqual({
           hash: 'dummy-user-operation-hash',
           fee: 12_345n,
-          bridgeFee: 5_000n
+          bridgeFee: 5_000n,
+          tokenFee: 9_900n
         })
       })
 
@@ -663,7 +670,8 @@ describe('Usdt0ProtocolEvm', () => {
         expect(result).toEqual({
           hash: 'dummy-user-operation-hash',
           fee: 12_345n,
-          bridgeFee: 5_000n
+          bridgeFee: 5_000n,
+          tokenFee: 9_900n
         })
       })
 
@@ -694,7 +702,8 @@ describe('Usdt0ProtocolEvm', () => {
         expect(result).toEqual({
           hash: 'dummy-user-operation-hash',
           fee: 12_345n,
-          bridgeFee: 5_000n
+          bridgeFee: 5_000n,
+          tokenFee: 9_900n
         })
       })
 
@@ -819,8 +828,27 @@ describe('Usdt0ProtocolEvm', () => {
 
         expect(result).toEqual({
           fee: 12_345n,
-          bridgeFee: 5_000n
+          bridgeFee: 5_000n,
+          tokenFee: 9_900n
         })
+      })
+
+      test.each([0n, 642_707n])('should quote the exact helper surcharge %s without approval headroom', async (tokenFee) => {
+        const amount = 14_166_692n
+        const nativeFee = 394_276_239_737_544n
+        quoteSendMock.mockReset()
+        quoteSendMock
+          .mockResolvedValueOnce({ nativeFee, lzTokenFee: 0n })
+          .mockResolvedValueOnce(amount + tokenFee)
+
+        const result = await protocol.quoteBridge({
+          targetChain: 'ethereum',
+          recipient: USER_ADDRESS,
+          token: TOKEN,
+          amount
+        })
+
+        expect(result).toEqual({ fee: 12_345n, bridgeFee: nativeFee, tokenFee })
       })
 
       test('should reset Ethereum mainnet USDT allowance to zero before a non-zero approve', async () => {
@@ -846,7 +874,8 @@ describe('Usdt0ProtocolEvm', () => {
 
         expect(result).toEqual({
           fee: 12_345n,
-          bridgeFee: 5_000n
+          bridgeFee: 5_000n,
+          tokenFee: 9_900n
         })
       })
 
