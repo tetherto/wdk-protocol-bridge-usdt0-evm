@@ -263,10 +263,6 @@ operation; a later send can have different fees from an earlier quote.
 | `bridgeFee` | Native wei | LayerZero messaging cost; for ERC-4337 the helper recovers this through `tokenFee` |
 | `tokenFee` | Bridged source-token base units; `0n` for standard EOA accounts | Added to the bridge principal; excludes approval headroom and `fee` |
 
-The Solana SDK follows the same result-type and method convention, but its
-`oftFee` is deducted from the transfer and its `amountReceived` is already net.
-Do not treat that deduction as an EVM-style surcharge or subtract it twice.
-
 ### Multi-Token Bridging
 
 ```javascript
