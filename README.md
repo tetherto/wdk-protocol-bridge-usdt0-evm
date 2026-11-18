@@ -475,6 +475,7 @@ new Usdt0ProtocolEvm(account, config)
 - `account` (WalletAccountEvm | WalletAccountEvmErc4337 | WalletAccountReadOnlyEvm | WalletAccountReadOnlyEvmErc4337): The wallet account to use for bridge operations
 - `config` (object, optional): Configuration object
   - `bridgeMaxFee` (bigint, optional): Maximum total bridge cost in wei
+  - `bridgeMaxTokenFee` (number | bigint, optional): For ERC-4337 accounts, maximum `tokenFee` in the bridged token's base units; a bridge whose token fee exceeds it throws before anything is signed, so the approval it signs stays within `amount + bridgeMaxTokenFee × 1.2`
 
 **Example:**
 ```javascript
@@ -503,9 +504,10 @@ Bridges tokens between blockchains using the USDT0 protocol.
   - `amount` (bigint): Amount to bridge in token base units
   - `oftContractAddress` (string, optional): Custom OFT contract address to use instead of auto-resolving from the source chain
   - `dstEid` (number, optional): Custom LayerZero destination endpoint ID to override the default for the target chain
-- `config` (`Pick<EvmErc4337WalletConfig, 'paymasterToken'> & Pick<BridgeProtocolConfig, 'bridgeMaxFee'>`, optional): Override settings for ERC-4337 accounts
+- `config` (`Pick<EvmErc4337WalletConfig, 'paymasterToken'> & Pick<Usdt0BridgeProtocolConfig, 'bridgeMaxFee' | 'bridgeMaxTokenFee'>`, optional): Override settings for ERC-4337 accounts
   - `paymasterToken` ({ address: string }, optional): Paymaster token configuration
   - `bridgeMaxFee` (bigint, optional): Override maximum bridge fee
+  - `bridgeMaxTokenFee` (number | bigint, optional): Override maximum token fee
 
 **Returns:** `Promise<BridgeResult>` - Bridge operation result
 
