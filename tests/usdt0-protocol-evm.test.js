@@ -760,6 +760,67 @@ describe('Usdt0ProtocolEvm', () => {
         expect(account.sendTransaction).not.toHaveBeenCalled()
       })
 
+      test('should throw if the token fee exceeds the bridge max token fee configuration', async () => {
+        const protocol = new Usdt0ProtocolEvm(account, { bridgeMaxTokenFee: 9_899n })
+
+        await expect(protocol.bridge({
+          targetChain: 'ethereum',
+          recipient: USER_ADDRESS,
+          token: TOKEN,
+          amount: 100
+        })).rejects.toThrow('Exceeded maximum token fee for bridge operation.')
+
+        expect(account.quoteSendTransaction).not.toHaveBeenCalled()
+        expect(account.sendTransaction).not.toHaveBeenCalled()
+      })
+
+      test('should throw if the token fee exceeds a bridge max token fee configured as a number', async () => {
+        const protocol = new Usdt0ProtocolEvm(account, { bridgeMaxTokenFee: 9_899 })
+
+        await expect(protocol.bridge({
+          targetChain: 'ethereum',
+          recipient: USER_ADDRESS,
+          token: TOKEN,
+          amount: 100
+        })).rejects.toThrow('Exceeded maximum token fee for bridge operation.')
+
+        expect(account.sendTransaction).not.toHaveBeenCalled()
+      })
+
+      test('should bridge when the token fee equals the bridge max token fee configuration', async () => {
+        const protocol = new Usdt0ProtocolEvm(account, { bridgeMaxTokenFee: 9_900n })
+
+        const result = await protocol.bridge({
+          targetChain: 'ethereum',
+          recipient: USER_ADDRESS,
+          token: TOKEN,
+          amount: 100
+        })
+
+        expect(account.sendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337], undefined)
+
+        expect(result).toEqual({
+          hash: 'dummy-user-operation-hash',
+          fee: 12_345n,
+          bridgeFee: 5_000n,
+          tokenFee: 9_900n
+        })
+      })
+
+      test('should let the bridge max token fee of a call override the configuration', async () => {
+        const protocol = new Usdt0ProtocolEvm(account, { bridgeMaxTokenFee: 9_899n })
+
+        const result = await protocol.bridge({
+          targetChain: 'ethereum',
+          recipient: USER_ADDRESS,
+          token: TOKEN,
+          amount: 100
+        }, { bridgeMaxTokenFee: 9_900n })
+
+        expect(account.sendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337], { bridgeMaxTokenFee: 9_900n })
+        expect(result.tokenFee).toBe(9_900n)
+      })
+
       test('should throw if the bridge fee exceeds the bridge max fee configuration', async () => {
         const OPTIONS = {
           targetChain: 'ethereum',
@@ -809,6 +870,23 @@ describe('Usdt0ProtocolEvm', () => {
 
         account.quoteSendTransaction = jest.fn()
           .mockResolvedValueOnce({ fee: 12_345n })
+      })
+
+      test('should quote a bridge whose token fee exceeds the bridge max token fee configuration', async () => {
+        const protocol = new Usdt0ProtocolEvm(account, { bridgeMaxTokenFee: 9_899n })
+
+        const result = await protocol.quoteBridge({
+          targetChain: 'ethereum',
+          recipient: USER_ADDRESS,
+          token: TOKEN,
+          amount: 100
+        })
+
+        expect(result).toEqual({
+          fee: 12_345n,
+          bridgeFee: 5_000n,
+          tokenFee: 9_900n
+        })
       })
 
       test('should successfully quote a bridge operation', async () => {
