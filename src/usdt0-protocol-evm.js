@@ -143,6 +143,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
    *   the protocol has been initialized with an erc-4337 wallet account, it can be used to override its configuration options along with the 'bridgeMaxFee' option.
    * @returns {Promise<Usdt0BridgeResult>} The bridge's result.
    * @throws {Error} If the protocol has been initialized with an erc-4337 wallet account and the token cannot be bridged from it on the source chain.
+   * @throws {Error} If the protocol has been initialized with an erc-4337 wallet account and the given 'oftContractAddress' does not bridge the token.
    */
   async bridge (options, config) {
     if (typeof this._account.sendTransaction !== 'function') {
@@ -194,6 +195,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
    *   an erc-4337 wallet account, it can be used to override its configuration options.
    * @returns {Promise<Omit<Usdt0BridgeResult, 'hash'>>} The bridge's quotes.
    * @throws {Error} If the protocol has been initialized with an erc-4337 wallet account and the token cannot be bridged from it on the source chain.
+   * @throws {Error} If the protocol has been initialized with an erc-4337 wallet account and the given 'oftContractAddress' does not bridge the token.
    */
   async quoteBridge (options, config) {
     if (!this._provider) {
@@ -330,9 +332,15 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
     const sendParam = this._buildOftSendParam(targetChain, recipient, amount, dstEid)
 
     if (this._account instanceof WalletAccountReadOnlyEvmErc4337) {
-      const tokenAddress = await oftContract.token()
+      if (oftContractAddress) {
+        const oftToken = await oftContract.token()
 
-      const transactionValueHelper = await this._getTransactionValueHelperContract(tokenAddress)
+        if (oftToken.toLowerCase() !== token.toLowerCase()) {
+          throw new Error(`The OFT contract '${oftContractAddress}' does not bridge the token '${token}'.`)
+        }
+      }
+
+      const transactionValueHelper = await this._getTransactionValueHelperContract(token)
 
       const { nativeFee, lzTokenFee } = await oftContract.quoteSend(sendParam, false)
 
@@ -346,23 +354,23 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
 
       const fee = { nativeFee, lzTokenFee: 0 }
 
-      const erc20Contract = new Contract(tokenAddress, ERC20_ABI, this._provider)
+      const erc20Contract = new Contract(token, ERC20_ABI, this._provider)
 
       const approveAmount = amount + tokenFee * APPROVE_FEE_TOLERANCE / 100n
 
       const approveTx = {
-        to: tokenAddress,
+        to: token,
         value: 0,
         data: erc20Contract.interface.encodeFunctionData('approve', [transactionValueHelper.target, approveAmount])
       }
 
       let resetTx
       const { chainId } = await this._provider.getNetwork()
-      if (chainId === 1n && tokenAddress.toLowerCase() === USDT_MAINNET_ADDRESS.toLowerCase()) {
-        const currentAllowance = await this._account.getAllowance(tokenAddress, transactionValueHelper.target)
+      if (chainId === 1n && token.toLowerCase() === USDT_MAINNET_ADDRESS.toLowerCase()) {
+        const currentAllowance = await this._account.getAllowance(token, transactionValueHelper.target)
         if (currentAllowance > 0n && approveAmount > 0n) {
           resetTx = {
-            to: tokenAddress,
+            to: token,
             value: 0,
             data: erc20Contract.interface.encodeFunctionData('approve', [transactionValueHelper.target, 0n])
           }

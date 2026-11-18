@@ -31,6 +31,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
      *   the protocol has been initialized with an erc-4337 wallet account, it can be used to override its configuration options along with the 'bridgeMaxFee' option.
      * @returns {Promise<Usdt0BridgeResult>} The bridge's result.
      * @throws {Error} If the protocol has been initialized with an erc-4337 wallet account and the token cannot be bridged from it on the source chain.
+     * @throws {Error} If the protocol has been initialized with an erc-4337 wallet account and the given 'oftContractAddress' does not bridge the token.
      */
     bridge(options: BridgeOptions, config?: Partial<EvmErc4337WalletPaymasterTokenConfig | EvmErc4337WalletSponsorshipPolicyConfig | EvmErc4337WalletNativeCoinsConfig> & Pick<BridgeProtocolConfig, "bridgeMaxFee">): Promise<Usdt0BridgeResult>;
     /**
@@ -45,6 +46,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
      *   an erc-4337 wallet account, it can be used to override its configuration options.
      * @returns {Promise<Omit<Usdt0BridgeResult, 'hash'>>} The bridge's quotes.
      * @throws {Error} If the protocol has been initialized with an erc-4337 wallet account and the token cannot be bridged from it on the source chain.
+     * @throws {Error} If the protocol has been initialized with an erc-4337 wallet account and the given 'oftContractAddress' does not bridge the token.
      */
     quoteBridge(options: BridgeOptions, config?: Partial<EvmErc4337WalletPaymasterTokenConfig | EvmErc4337WalletSponsorshipPolicyConfig | EvmErc4337WalletNativeCoinsConfig>): Promise<Omit<Usdt0BridgeResult, "hash">>;
     /**
