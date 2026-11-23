@@ -743,6 +743,36 @@ describe('Usdt0ProtocolEvm', () => {
         expect(account.sendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337], undefined)
       })
 
+      test('should approve the token it validated, not a later answer from the oft contract', async () => {
+        tokenMock.mockReset().mockResolvedValueOnce(TOKEN).mockResolvedValue('0x000000000000000000000000000000000000dEaD')
+        helperTokenMock.mockReset().mockResolvedValue(TOKEN)
+
+        await protocol.bridge({
+          targetChain: 'ethereum',
+          recipient: USER_ADDRESS,
+          token: TOKEN,
+          amount: 100
+        })
+
+        expect(account.sendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337], undefined)
+      })
+
+      test('should throw if the given oft contract does not bridge the token', async () => {
+        tokenMock.mockResolvedValue(XAUT_TOKEN)
+
+        const promise = protocol.bridge({
+          targetChain: 'ethereum',
+          recipient: USER_ADDRESS,
+          token: TOKEN,
+          amount: 100,
+          oftContractAddress: XAUT_OFT
+        })
+
+        await expect(promise).rejects.toThrow(`The OFT contract '${XAUT_OFT}' does not bridge the token '${TOKEN}'.`)
+
+        expect(account.sendTransaction).not.toHaveBeenCalled()
+      })
+
       test('should throw if the token cannot be bridged from erc-4337 accounts', async () => {
         tokenMock.mockResolvedValue(XAUT_TOKEN)
         helperTokenMock.mockResolvedValue(TOKEN)
@@ -831,6 +861,22 @@ describe('Usdt0ProtocolEvm', () => {
           bridgeFee: 5_000n,
           tokenFee: 9_900n
         })
+      })
+
+      test('should throw if the given oft contract does not bridge the token', async () => {
+        tokenMock.mockResolvedValue(XAUT_TOKEN)
+
+        const promise = protocol.quoteBridge({
+          targetChain: 'ethereum',
+          recipient: USER_ADDRESS,
+          token: TOKEN,
+          amount: 100,
+          oftContractAddress: XAUT_OFT
+        })
+
+        await expect(promise).rejects.toThrow(`The OFT contract '${XAUT_OFT}' does not bridge the token '${TOKEN}'.`)
+
+        expect(account.quoteSendTransaction).not.toHaveBeenCalled()
       })
 
       test.each([0n, 642_707n])('should quote the exact helper surcharge %s without approval headroom', async (tokenFee) => {
