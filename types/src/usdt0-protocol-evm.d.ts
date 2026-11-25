@@ -41,8 +41,8 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
      * Quotes the costs of a bridge operation.
      *
      * Standard (non erc-4337) accounts must approve the tokens to the usdt0 protocol via the account's `approve` method,
-     * unless already approved, otherwise the quote fails. Erc-4337 accounts bundle the approval automatically, and the
-     * reset of the allowance to zero after the bridge, so the quote covers both.
+     * unless already approved, otherwise the quote fails. Erc-4337 accounts bundle the approval and the reset of the
+     * allowance to zero after the bridge, so the quote covers both.
      *
      * @param {BridgeOptions} options - The bridge's options. Optionally pass 'oftContractAddress' to use a custom OFT contract address instead of the auto-resolved one, and/or 'dstEid' to
      *   override the destination endpoint id.

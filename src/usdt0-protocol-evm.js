@@ -208,8 +208,8 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
    * Quotes the costs of a bridge operation.
    *
    * Standard (non erc-4337) accounts must approve the tokens to the usdt0 protocol via the account's `approve` method,
-   * unless already approved, otherwise the quote fails. Erc-4337 accounts bundle the approval automatically, and the
-   * reset of the allowance to zero after the bridge, so the quote covers both.
+   * unless already approved, otherwise the quote fails. Erc-4337 accounts bundle the approval and the reset of the
+   * allowance to zero after the bridge, so the quote covers both.
    *
    * @param {BridgeOptions} options - The bridge's options. Optionally pass 'oftContractAddress' to use a custom OFT contract address instead of the auto-resolved one, and/or 'dstEid' to
    *   override the destination endpoint id.
@@ -386,16 +386,18 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
         data: erc20Contract.interface.encodeFunctionData('approve', [transactionValueHelper.target, approveAmount])
       }
 
+      const revokeTx = {
+        to: token,
+        value: 0,
+        data: erc20Contract.interface.encodeFunctionData('approve', [transactionValueHelper.target, 0n])
+      }
+
       let resetTx
       const { chainId } = await this._provider.getNetwork()
       if (chainId === 1n && token.toLowerCase() === USDT_MAINNET_ADDRESS.toLowerCase()) {
         const currentAllowance = await this._account.getAllowance(token, transactionValueHelper.target)
         if (currentAllowance > 0n && approveAmount > 0n) {
-          resetTx = {
-            to: token,
-            value: 0,
-            data: erc20Contract.interface.encodeFunctionData('approve', [transactionValueHelper.target, 0n])
-          }
+          resetTx = revokeTx
         }
       }
 
@@ -403,12 +405,6 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
         to: transactionValueHelper.target,
         value: 0,
         data: transactionValueHelper.interface.encodeFunctionData('send', [oftContract.target, sendParam, fee])
-      }
-
-      const revokeTx = {
-        to: token,
-        value: 0,
-        data: erc20Contract.interface.encodeFunctionData('approve', [transactionValueHelper.target, 0n])
       }
 
       return { oftTx, approveTx, resetTx, revokeTx, bridgeFee: nativeFee, tokenFee }
