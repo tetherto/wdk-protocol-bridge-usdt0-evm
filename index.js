@@ -20,6 +20,8 @@
 
 /** @typedef {import('./src/usdt0-protocol-evm.js').BridgeOptions} BridgeOptions */
 
+/** @typedef {import('./src/usdt0-protocol-evm.js').Usdt0BridgeProtocolConfig} Usdt0BridgeProtocolConfig */
+/** @typedef {import('./src/usdt0-protocol-evm.js').Usdt0BridgeProtocolConfigExtras} Usdt0BridgeProtocolConfigExtras */
 /** @typedef {import('./src/usdt0-protocol-evm.js').Usdt0BridgeResult} Usdt0BridgeResult */
 
 /** @typedef {import('./src/usdt0-protocol-evm.js').Usdt0BridgeResultExtras} Usdt0BridgeResultExtras */
