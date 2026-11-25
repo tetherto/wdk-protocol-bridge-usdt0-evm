@@ -135,6 +135,24 @@ const APPROVE_TRANSACTION = {
   }
 }
 
+const REVOKE_ALLOWANCE_TRANSACTION = {
+  ERC4337: {
+    to: TOKEN,
+    value: 0,
+    data: '0x095ea7b3000000000000000000000000a90f03c856d01f698e7071b393387cd75a8a319a0000000000000000000000000000000000000000000000000000000000000000'
+  },
+  ERC4337_ETHEREUM: {
+    to: USDT_MAINNET_ADDRESS,
+    value: 0,
+    data: '0x095ea7b3000000000000000000000000bcc12949743a4fc86700eb58c241fbaf722e2d730000000000000000000000000000000000000000000000000000000000000000'
+  },
+  ERC4337_ETHEREUM_TOKEN: {
+    to: TOKEN,
+    value: 0,
+    data: '0x095ea7b3000000000000000000000000bcc12949743a4fc86700eb58c241fbaf722e2d730000000000000000000000000000000000000000000000000000000000000000'
+  }
+}
+
 const RESET_ALLOWANCE_TRANSACTION = {
   ERC4337_ETHEREUM: {
     to: USDT_MAINNET_ADDRESS,
@@ -626,9 +644,9 @@ describe('Usdt0ProtocolEvm', () => {
         expect(quoteSendMock).toHaveBeenCalledWith(SEND_PARAM.ERC4337, false)
         expect(quoteSendMock).toHaveBeenCalledWith(SEND_PARAM.ERC4337, [5_000n, 0n])
 
-        expect(account.quoteSendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337], undefined)
+        expect(account.quoteSendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337, REVOKE_ALLOWANCE_TRANSACTION.ERC4337], undefined)
 
-        expect(account.sendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337], undefined)
+        expect(account.sendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337, REVOKE_ALLOWANCE_TRANSACTION.ERC4337], undefined)
 
         expect(result).toEqual({
           hash: 'dummy-user-operation-hash',
@@ -658,13 +676,15 @@ describe('Usdt0ProtocolEvm', () => {
         expect(account.quoteSendTransaction).toHaveBeenCalledWith([
           RESET_ALLOWANCE_TRANSACTION.ERC4337_ETHEREUM,
           APPROVE_TRANSACTION.ERC4337_ETHEREUM,
-          BRIDGE_TRANSACTION.ERC4337_ETHEREUM
+          BRIDGE_TRANSACTION.ERC4337_ETHEREUM,
+          REVOKE_ALLOWANCE_TRANSACTION.ERC4337_ETHEREUM
         ], undefined)
 
         expect(account.sendTransaction).toHaveBeenCalledWith([
           RESET_ALLOWANCE_TRANSACTION.ERC4337_ETHEREUM,
           APPROVE_TRANSACTION.ERC4337_ETHEREUM,
-          BRIDGE_TRANSACTION.ERC4337_ETHEREUM
+          BRIDGE_TRANSACTION.ERC4337_ETHEREUM,
+          REVOKE_ALLOWANCE_TRANSACTION.ERC4337_ETHEREUM
         ], undefined)
 
         expect(result).toEqual({
@@ -691,12 +711,14 @@ describe('Usdt0ProtocolEvm', () => {
 
         expect(account.quoteSendTransaction).toHaveBeenCalledWith([
           APPROVE_TRANSACTION.ERC4337_ETHEREUM,
-          BRIDGE_TRANSACTION.ERC4337_ETHEREUM
+          BRIDGE_TRANSACTION.ERC4337_ETHEREUM,
+          REVOKE_ALLOWANCE_TRANSACTION.ERC4337_ETHEREUM
         ], undefined)
 
         expect(account.sendTransaction).toHaveBeenCalledWith([
           APPROVE_TRANSACTION.ERC4337_ETHEREUM,
-          BRIDGE_TRANSACTION.ERC4337_ETHEREUM
+          BRIDGE_TRANSACTION.ERC4337_ETHEREUM,
+          REVOKE_ALLOWANCE_TRANSACTION.ERC4337_ETHEREUM
         ], undefined)
 
         expect(result).toEqual({
@@ -722,7 +744,8 @@ describe('Usdt0ProtocolEvm', () => {
 
         expect(account.quoteSendTransaction).toHaveBeenCalledWith([
           APPROVE_TRANSACTION.ERC4337_ETHEREUM_TOKEN,
-          BRIDGE_TRANSACTION.ERC4337_ETHEREUM
+          BRIDGE_TRANSACTION.ERC4337_ETHEREUM,
+          REVOKE_ALLOWANCE_TRANSACTION.ERC4337_ETHEREUM_TOKEN
         ], undefined)
       })
 
@@ -738,9 +761,9 @@ describe('Usdt0ProtocolEvm', () => {
 
         expect(account.getAllowance).not.toHaveBeenCalled()
 
-        expect(account.quoteSendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337], undefined)
+        expect(account.quoteSendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337, REVOKE_ALLOWANCE_TRANSACTION.ERC4337], undefined)
 
-        expect(account.sendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337], undefined)
+        expect(account.sendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337, REVOKE_ALLOWANCE_TRANSACTION.ERC4337], undefined)
       })
 
       test('should approve the token it validated, not a later answer from the oft contract', async () => {
@@ -754,7 +777,7 @@ describe('Usdt0ProtocolEvm', () => {
           amount: 100
         })
 
-        expect(account.sendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337], undefined)
+        expect(account.sendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337, REVOKE_ALLOWANCE_TRANSACTION.ERC4337], undefined)
       })
 
       test('should throw if the given oft contract does not bridge the token', async () => {
@@ -827,7 +850,7 @@ describe('Usdt0ProtocolEvm', () => {
           amount: 100
         })
 
-        expect(account.sendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337], undefined)
+        expect(account.sendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337, REVOKE_ALLOWANCE_TRANSACTION.ERC4337], undefined)
 
         expect(result).toEqual({
           hash: 'dummy-user-operation-hash',
@@ -847,7 +870,7 @@ describe('Usdt0ProtocolEvm', () => {
           amount: 100
         }, { bridgeMaxTokenFee: 9_900n })
 
-        expect(account.sendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337], { bridgeMaxTokenFee: 9_900n })
+        expect(account.sendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337, REVOKE_ALLOWANCE_TRANSACTION.ERC4337], { bridgeMaxTokenFee: 9_900n })
         expect(result.tokenFee).toBe(9_900n)
       })
 
@@ -932,7 +955,7 @@ describe('Usdt0ProtocolEvm', () => {
         expect(quoteSendMock).toHaveBeenCalledWith(SEND_PARAM.ERC4337, false)
         expect(quoteSendMock).toHaveBeenCalledWith(SEND_PARAM.ERC4337, [5_000n, 0n])
 
-        expect(account.quoteSendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337], undefined)
+        expect(account.quoteSendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337, REVOKE_ALLOWANCE_TRANSACTION.ERC4337], undefined)
 
         expect(result).toEqual({
           fee: 12_345n,
@@ -993,7 +1016,8 @@ describe('Usdt0ProtocolEvm', () => {
         expect(account.quoteSendTransaction).toHaveBeenCalledWith([
           RESET_ALLOWANCE_TRANSACTION.ERC4337_ETHEREUM,
           APPROVE_TRANSACTION.ERC4337_ETHEREUM,
-          BRIDGE_TRANSACTION.ERC4337_ETHEREUM
+          BRIDGE_TRANSACTION.ERC4337_ETHEREUM,
+          REVOKE_ALLOWANCE_TRANSACTION.ERC4337_ETHEREUM
         ], undefined)
 
         expect(result).toEqual({
@@ -1015,7 +1039,7 @@ describe('Usdt0ProtocolEvm', () => {
 
         expect(account.getAllowance).not.toHaveBeenCalled()
 
-        expect(account.quoteSendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337], undefined)
+        expect(account.quoteSendTransaction).toHaveBeenCalledWith([APPROVE_TRANSACTION.ERC4337, BRIDGE_TRANSACTION.ERC4337, REVOKE_ALLOWANCE_TRANSACTION.ERC4337], undefined)
       })
 
       test('should throw if the token cannot be bridged from erc-4337 accounts', async () => {

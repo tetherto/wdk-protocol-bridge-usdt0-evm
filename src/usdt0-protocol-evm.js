@@ -149,7 +149,8 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
    * Bridges a token to a different blockchain.
    *
    * Standard (non erc-4337) accounts must approve the tokens to the usdt0 protocol via the account's `approve` method,
-   * unless already approved. Erc-4337 accounts bundle the approval automatically, so no prior approval is needed.
+   * unless already approved. Erc-4337 accounts bundle the approval automatically, so no prior approval is needed, and
+   * reset the allowance to zero after the bridge, so none is left behind.
    *
    * @param {BridgeOptions} options - The bridge's options. Optionally pass 'oftContractAddress' to use a custom OFT contract address instead of the auto-resolved one, and/or 'dstEid' to
    *   override the destination endpoint id.
@@ -170,7 +171,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
       throw new Error('The wallet must be connected to a provider in order to perform bridge operations.')
     }
 
-    const { oftTx, approveTx, resetTx, bridgeFee, tokenFee } = await this._getBridgeTransactions({ ...options, amount: BigInt(options.amount) })
+    const { oftTx, approveTx, resetTx, revokeTx, bridgeFee, tokenFee } = await this._getBridgeTransactions({ ...options, amount: BigInt(options.amount) })
 
     if (this._account instanceof WalletAccountEvmErc4337) {
       const { bridgeMaxFee, bridgeMaxTokenFee } = { ...this._config, ...config }
@@ -179,7 +180,7 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
         throw new Error('Exceeded maximum token fee for bridge operation.')
       }
 
-      const txs = resetTx ? [resetTx, approveTx, oftTx] : [approveTx, oftTx]
+      const txs = resetTx ? [resetTx, approveTx, oftTx, revokeTx] : [approveTx, oftTx, revokeTx]
 
       const { fee } = await this._account.quoteSendTransaction(txs, config)
 
@@ -207,7 +208,8 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
    * Quotes the costs of a bridge operation.
    *
    * Standard (non erc-4337) accounts must approve the tokens to the usdt0 protocol via the account's `approve` method,
-   * unless already approved, otherwise the quote fails. Erc-4337 accounts bundle the approval automatically.
+   * unless already approved, otherwise the quote fails. Erc-4337 accounts bundle the approval automatically, and the
+   * reset of the allowance to zero after the bridge, so the quote covers both.
    *
    * @param {BridgeOptions} options - The bridge's options. Optionally pass 'oftContractAddress' to use a custom OFT contract address instead of the auto-resolved one, and/or 'dstEid' to
    *   override the destination endpoint id.
@@ -222,10 +224,10 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
       throw new Error('The wallet must be connected to a provider in order to quote bridge operations.')
     }
 
-    const { oftTx, approveTx, resetTx, bridgeFee, tokenFee } = await this._getBridgeTransactions({ ...options, amount: BigInt(options.amount) })
+    const { oftTx, approveTx, resetTx, revokeTx, bridgeFee, tokenFee } = await this._getBridgeTransactions({ ...options, amount: BigInt(options.amount) })
 
     if (this._account instanceof WalletAccountReadOnlyEvmErc4337) {
-      const txs = resetTx ? [resetTx, approveTx, oftTx] : [approveTx, oftTx]
+      const txs = resetTx ? [resetTx, approveTx, oftTx, revokeTx] : [approveTx, oftTx, revokeTx]
 
       const { fee } = await this._account.quoteSendTransaction(txs, config)
 
@@ -403,7 +405,13 @@ export default class Usdt0ProtocolEvm extends BridgeProtocol {
         data: transactionValueHelper.interface.encodeFunctionData('send', [oftContract.target, sendParam, fee])
       }
 
-      return { oftTx, approveTx, resetTx, bridgeFee: nativeFee, tokenFee }
+      const revokeTx = {
+        to: token,
+        value: 0,
+        data: erc20Contract.interface.encodeFunctionData('approve', [transactionValueHelper.target, 0n])
+      }
+
+      return { oftTx, approveTx, resetTx, revokeTx, bridgeFee: nativeFee, tokenFee }
     }
 
     const { nativeFee: bridgeFee } = await oftContract.quoteSend(sendParam, false)
